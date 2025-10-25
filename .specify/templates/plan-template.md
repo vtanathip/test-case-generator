@@ -31,7 +31,16 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+**Required Compliance Gates** (from `.specify/memory/constitution.md`):
+
+- [ ] **Simplicity Gate**: Feature design avoids unnecessary complexity
+- [ ] **Testing Gate**: Test strategy defined (unit + integration tests planned)
+- [ ] **Modularity Gate**: Components are independent with clear interfaces
+- [ ] **Documentation Gate**: Documentation plan includes component READMEs
+- [ ] **Story Independence Gate**: User stories are independently testable
+
+**Justification for Any Complexity** (if applicable):
+[Document any necessary complexity and why it cannot be simplified]
 
 ## Project Structure
 
