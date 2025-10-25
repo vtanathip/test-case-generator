@@ -1,0 +1,474 @@
+openapi: 3.0.3
+info:
+  title: AI Test Case Generation System API
+  description: |
+    Backend API for the AI-powered test case generation system. Handles GitHub webhooks, 
+    processes test case generation requests, and provides dashboard metrics.
+  version: 1.0.0
+  contact:
+    name: Test Case Generator Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.test-generator.example.com
+    description: Production server (via Cloudflare Tunnel)
+
+tags:
+  - name: webhooks
+    description: GitHub webhook endpoints
+  - name: dashboard
+    description: Dashboard API endpoints for UI
+  - name: health
+    description: Health check endpoints
+
+paths:
+  /webhooks/github:
+    post:
+      tags:
+        - webhooks
+      summary: Receive GitHub webhook events
+      description: |
+        Receives GitHub webhook events for issues. Validates signature, checks idempotency cache,
+        and triggers test case generation workflow for issues with "generate-tests" tag.
+      operationId: receiveGitHubWebhook
+      parameters:
+        - name: X-GitHub-Event
+          in: header
+          required: true
+          schema:
+            type: string
+            example: issues
+          description: GitHub event type
+        - name: X-Hub-Signature-256
+          in: header
+          required: true
+          schema:
+            type: string
+            example: sha256=abc123...
+          description: HMAC signature for webhook validation
+        - name: X-GitHub-Delivery
+          in: header
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique delivery ID from GitHub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GitHubWebhookPayload'
+      responses:
+        '202':
+          description: Webhook accepted and queued for processing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+                  correlation_id:
+                    type: string
+                    format: uuid
+                  message:
+                    type: string
+                    example: Webhook queued for processing
+        '400':
+          description: Invalid webhook payload or missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Invalid webhook signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Duplicate webhook (already processed within 1 hour)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/stats:
+    get:
+      tags:
+        - dashboard
+      summary: Get aggregated system statistics
+      description: Returns real-time metrics for the dashboard
+      operationId: getStats
+      responses:
+        '200':
+          description: Statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardStats'
+
+  /api/issues:
+    get:
+      tags:
+        - dashboard
+      summary: List recent issues with processing status
+      description: Returns paginated list of GitHub issues with "generate-tests" tag
+      operationId: listIssues
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+          description: Maximum number of issues to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Number of issues to skip (pagination)
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [PENDING, PROCESSING, COMPLETED, FAILED, SKIPPED]
+          description: Filter by processing status
+      responses:
+        '200':
+          description: Issues retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/IssueStatus'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /api/test-cases:
+    get:
+      tags:
+        - dashboard
+      summary: List generated test cases
+      description: Returns paginated list of generated test case documents
+      operationId: listTestCases
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Test cases retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TestCase'
+                  total:
+                    type: integer
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+
+  /api/health:
+    get:
+      tags:
+        - health
+      summary: System health check
+      description: Returns health status of all system components
+      operationId: getHealth
+      responses:
+        '200':
+          description: All systems operational
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+        '503':
+          description: One or more components unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+components:
+  schemas:
+    GitHubWebhookPayload:
+      type: object
+      required:
+        - action
+        - issue
+        - repository
+      properties:
+        action:
+          type: string
+          example: opened
+          description: GitHub event action
+        issue:
+          $ref: '#/components/schemas/GitHubIssue'
+        repository:
+          $ref: '#/components/schemas/GitHubRepository'
+
+    GitHubIssue:
+      type: object
+      required:
+        - number
+        - title
+        - body
+        - labels
+      properties:
+        number:
+          type: integer
+          example: 42
+        title:
+          type: string
+          example: "Add user authentication"
+        body:
+          type: string
+          example: "Implement OAuth2 authentication flow..."
+          maxLength: 5000
+        labels:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                example: "generate-tests"
+
+    GitHubRepository:
+      type: object
+      required:
+        - full_name
+      properties:
+        full_name:
+          type: string
+          example: "owner/repo"
+
+    DashboardStats:
+      type: object
+      required:
+        - total_issues_processed
+        - success_rate
+        - average_processing_time
+        - p95_processing_time
+        - concurrent_jobs
+        - failed_jobs_today
+        - vector_db_size
+        - cache_hit_rate
+        - last_updated
+      properties:
+        total_issues_processed:
+          type: integer
+          example: 1247
+        success_rate:
+          type: number
+          format: float
+          example: 0.982
+          description: Success rate (0-1)
+        average_processing_time:
+          type: number
+          format: float
+          example: 85.5
+          description: Average time in seconds
+        p95_processing_time:
+          type: number
+          format: float
+          example: 120.0
+          description: 95th percentile time in seconds
+        concurrent_jobs:
+          type: integer
+          example: 3
+        failed_jobs_today:
+          type: integer
+          example: 5
+        vector_db_size:
+          type: integer
+          example: 8432
+          description: Number of embeddings in vector DB
+        cache_hit_rate:
+          type: number
+          format: float
+          example: 0.15
+          description: Cache hit rate (0-1)
+        last_updated:
+          type: string
+          format: date-time
+          example: "2025-10-25T10:30:45Z"
+
+    IssueStatus:
+      type: object
+      required:
+        - issue_number
+        - title
+        - status
+        - received_at
+      properties:
+        issue_number:
+          type: integer
+          example: 42
+        title:
+          type: string
+          example: "Add user authentication"
+        status:
+          type: string
+          enum: [PENDING, PROCESSING, COMPLETED, FAILED, SKIPPED]
+          example: COMPLETED
+        current_stage:
+          type: string
+          example: CREATE_PR
+        received_at:
+          type: string
+          format: date-time
+          example: "2025-10-25T10:25:00Z"
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2025-10-25T10:26:30Z"
+        pr_url:
+          type: string
+          format: uri
+          nullable: true
+          example: "https://github.com/owner/repo/pull/123"
+        error_message:
+          type: string
+          nullable: true
+          example: null
+
+    TestCase:
+      type: object
+      required:
+        - document_id
+        - issue_number
+        - title
+        - pr_number
+        - pr_url
+        - generated_at
+        - ai_model
+      properties:
+        document_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        issue_number:
+          type: integer
+          example: 42
+        title:
+          type: string
+          example: "Test Cases: Add user authentication"
+        pr_number:
+          type: integer
+          example: 123
+        pr_url:
+          type: string
+          format: uri
+          example: "https://github.com/owner/repo/pull/123"
+        generated_at:
+          type: string
+          format: date-time
+          example: "2025-10-25T10:26:15Z"
+        ai_model:
+          type: string
+          example: "gpt-4-turbo"
+        context_sources:
+          type: array
+          items:
+            type: integer
+          example: [12, 38, 45]
+        preview:
+          type: string
+          example: "## Test Scenario 1: Successful OAuth login..."
+          description: First 200 chars of Markdown content
+
+    HealthStatus:
+      type: object
+      required:
+        - status
+        - components
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+          example: healthy
+        components:
+          type: object
+          properties:
+            vector_db:
+              $ref: '#/components/schemas/ComponentHealth'
+            cache:
+              $ref: '#/components/schemas/ComponentHealth'
+            github_api:
+              $ref: '#/components/schemas/ComponentHealth'
+            ai_service:
+              $ref: '#/components/schemas/ComponentHealth'
+        timestamp:
+          type: string
+          format: date-time
+          example: "2025-10-25T10:30:00Z"
+
+    ComponentHealth:
+      type: object
+      required:
+        - status
+        - latency_ms
+      properties:
+        status:
+          type: string
+          enum: [up, down, degraded]
+          example: up
+        latency_ms:
+          type: number
+          format: float
+          example: 25.5
+        message:
+          type: string
+          nullable: true
+          example: null
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          example: invalid_signature
+        message:
+          type: string
+          example: Webhook signature validation failed
+        correlation_id:
+          type: string
+          format: uuid
+          nullable: true
