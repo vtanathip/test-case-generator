@@ -68,7 +68,7 @@ The system securely receives webhook requests from GitHub, validates the authent
 
 ### Edge Cases
 
-- What happens when an issue is created without sufficient information for test case generation?
+- What happens when an issue is created without sufficient information for test case generation? → **System posts a comment on the issue requesting more detail with a template, skips generation, and marks the ProcessingJob as SKIPPED with reason "insufficient_information"**
 - How does the system handle concurrent issue creation (multiple issues created simultaneously)?
 - What happens if the GitHub API rate limit is exceeded during PR creation?
 - How does the system handle failure to create a branch or pull request due to permissions?
@@ -108,9 +108,6 @@ The system securely receives webhook requests from GitHub, validates the authent
 - **Pull Request**: Contains generated test cases, references original issue, and enables review workflow
 - **AI Agent State**: Tracks the workflow progress through stages (receive, retrieve, generate, commit, create-pr)
 
-- **[Entity 1]**: [What it represents, key attributes without implementation]
-- **AI Agent State**: Tracks the workflow progress through stages (receive, retrieve, generate, commit, create-pr)
-
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
@@ -121,9 +118,9 @@ The system securely receives webhook requests from GitHub, validates the authent
 - **SC-004**: Pull requests are successfully created for 98% of tagged issues (excluding those with insufficient information)
 - **SC-005**: System maintains 99.9% uptime for webhook endpoint availability
 - **SC-006**: Vector database retrieves relevant context with similarity score above 0.7 for 80% of queries
-- **SC-007**: Test case generation accuracy (measured by manual review or automated validation) is at least 85%
+- **SC-007**: Test case generation accuracy (measured by manual review of 20 randomly sampled PRs per month using rubric: correct scenarios, edge case coverage, clarity) is at least 85%
 - **SC-008**: System handles webhook signature validation with zero false positives and zero unauthorized access incidents
-- **SC-009**: Developer satisfaction with generated test case quality is rated 4 out of 5 or higher based on feedback
+- **SC-009**: Developer satisfaction with generated test case quality is rated 4 out of 5 or higher based on feedback (survey sent after every 10 uses, minimum 10 responses)
 - **SC-010**: System reduces manual test case writing time by at least 60% compared to baseline
 
 ## Assumptions
@@ -149,5 +146,5 @@ The system securely receives webhook requests from GitHub, validates the authent
 - Advanced permissions or role-based access control beyond GitHub repository permissions
 - Test case versioning or historical tracking (relies on Git history)
 - Integration with project management tools beyond GitHub Issues
-- Support for private AI models or on-premise deployments (cloud-based AI service assumed)
+- Support for multiple AI model providers beyond Llama 3.2 (single model stack for MVP simplicity)
 

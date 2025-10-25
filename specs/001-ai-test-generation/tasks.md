@@ -139,6 +139,8 @@ Per plan.md, this is a web application with:
   - Log branch creation
   - Log commit hash
   - Log PR number and URL
+- [ ] T043 [US1] Create README.md in backend/src/models/ explaining data model relationships and state machines
+- [ ] T044 [US1] Create README.md in backend/src/services/ explaining service architecture and workflow stages
 
 **Checkpoint**: At this point, User Story 1 should be fully functional - webhook triggers test case generation and creates PR
 
@@ -152,35 +154,35 @@ Per plan.md, this is a web application with:
 
 ### Tests for User Story 2 (Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T043 [P] [US2] Unit test for VectorEmbedding model in backend/tests/unit/models/test_vector_embedding.py
-- [ ] T044 [P] [US2] Unit test for vector similarity search in backend/tests/unit/services/test_vector_service.py
-- [ ] T045 [P] [US2] Unit test for embedding generation with sentence-transformers in backend/tests/unit/services/test_embedding_service.py
-- [ ] T046 [US2] Integration test for context retrieval workflow in backend/tests/integration/test_context_retrieval.py
+- [ ] T045 [P] [US2] Unit test for VectorEmbedding model in backend/tests/unit/models/test_vector_embedding.py
+- [ ] T046 [P] [US2] Unit test for vector similarity search in backend/tests/unit/services/test_vector_service.py
+- [ ] T047 [P] [US2] Unit test for embedding generation with sentence-transformers in backend/tests/unit/services/test_embedding_service.py
+- [ ] T048 [US2] Integration test for context retrieval workflow in backend/tests/integration/test_context_retrieval.py
 
 ### Data Models for User Story 2
 
-- [ ] T047 [US2] Create VectorEmbedding model in backend/src/models/vector_embedding.py
+- [ ] T049 [US2] Create VectorEmbedding model in backend/src/models/vector_embedding.py
   - 384-dim or 768-dim vector
   - 30-day TTL (expires_at)
   - Metadata (issue_number, labels, repository)
 
 ### Services for User Story 2
 
-- [ ] T048 [US2] Implement EmbeddingService in backend/src/services/vector/embedding_service.py
+- [ ] T050 [US2] Implement EmbeddingService in backend/src/services/vector/embedding_service.py
   - Load sentence-transformers model (all-MiniLM-L6-v2)
   - Generate embeddings from text content
   - Handle 8000 char limit
-- [ ] T049 [US2] Implement VectorService in backend/src/services/vector/vector_service.py
+- [ ] T051 [US2] Implement VectorService in backend/src/services/vector/vector_service.py
   - Store embeddings in ChromaDB with metadata
   - Query by similarity (cosine distance, top 5 results per FR-004)
   - Implement 30-day TTL cleanup job
   - Filter results by similarity threshold (>0.7 per SC-006)
-- [ ] T050 [US2] Update AIService to integrate context retrieval in backend/src/services/ai/ai_service.py
+- [ ] T052 [US2] Update AIService to integrate context retrieval in backend/src/services/ai/ai_service.py
   - Call VectorService during RETRIEVE stage
   - Include top 5 results in prompt context
   - Update prompt template to use context
   - Track context_sources in TestCaseDocument metadata
-- [ ] T051 [US2] Implement background job for embedding storage in backend/src/services/vector/embedding_job.py
+- [ ] T053 [US2] Implement background job for embedding storage in backend/src/services/vector/embedding_job.py
   - Trigger after successful PR creation
   - Split test case into sections
   - Generate embeddings for each section
@@ -188,11 +190,11 @@ Per plan.md, this is a web application with:
 
 ### Monitoring for User Story 2
 
-- [ ] T052 [US2] Add structured logging for vector operations in backend/src/services/vector/vector_service.py
+- [ ] T054 [US2] Add structured logging for vector operations in backend/src/services/vector/vector_service.py
   - Log similarity scores
   - Log result count
   - Log query duration
-- [ ] T053 [US2] Add structured logging for embedding generation in backend/src/services/vector/embedding_service.py
+- [ ] T055 [US2] Add structured logging for embedding generation in backend/src/services/vector/embedding_service.py
   - Log embedding dimension
   - Log model name
   - Log generation duration
@@ -209,44 +211,45 @@ Per plan.md, this is a web application with:
 
 ### Tests for User Story 3 (Write FIRST, ensure they FAIL) ⚠️
 
-- [ ] T054 [P] [US3] Unit test for idempotency cache in backend/tests/unit/services/test_idempotency_service.py
-- [ ] T055 [P] [US3] Unit test for signature validation edge cases in backend/tests/unit/services/test_webhook_validation.py
-- [ ] T056 [US3] Integration test for duplicate webhook handling in backend/tests/integration/test_idempotency.py
-- [ ] T057 [US3] Integration test for signature validation failure in backend/tests/integration/test_webhook_security.py
+- [ ] T056 [P] [US3] Unit test for idempotency cache in backend/tests/unit/services/test_idempotency_service.py
+- [ ] T057 [P] [US3] Unit test for signature validation edge cases in backend/tests/unit/services/test_webhook_validation.py
+- [ ] T058 [US3] Integration test for duplicate webhook handling in backend/tests/integration/test_idempotency.py
+- [ ] T059 [US3] Integration test for signature validation failure in backend/tests/integration/test_webhook_security.py
 
 ### Data Models for User Story 3
 
-- [ ] T058 [US3] Create IdempotencyCache model in backend/src/models/idempotency_cache.py
+- [ ] T060 [US3] Create IdempotencyCache model in backend/src/models/idempotency_cache.py
   - 1-hour TTL
   - Key: issue_number + event_type + delivery_id
   - Value: correlation_id
 
 ### Services for User Story 3
 
-- [ ] T059 [US3] Implement IdempotencyService in backend/src/services/webhook/idempotency_service.py
+- [ ] T061 [US3] Implement IdempotencyService in backend/src/services/webhook/idempotency_service.py
   - Check Redis cache for duplicate (issue + event + delivery_id)
   - Store processed webhooks with 1-hour TTL (FR-017)
   - Return 409 Conflict if duplicate detected
-- [ ] T060 [US3] Enhance WebhookService signature validation in backend/src/services/webhook/webhook_service.py
+- [ ] T062 [US3] Enhance WebhookService signature validation in backend/src/services/webhook/webhook_service.py
   - Validate HMAC-SHA256 signature (FR-012)
   - Handle missing signature (401 error)
   - Handle invalid signature (401 error)
   - Log validation attempts with correlation_id
-- [ ] T061 [US3] Update WebhookService to integrate idempotency check in backend/src/services/webhook/webhook_service.py
+- [ ] T063 [US3] Update WebhookService to integrate idempotency check in backend/src/services/webhook/webhook_service.py
   - Check IdempotencyService before processing
   - Store webhook in cache after validation
   - Return appropriate 409 response for duplicates
 
 ### Monitoring for User Story 3
 
-- [ ] T062 [US3] Add structured logging for security events in backend/src/services/webhook/webhook_service.py
+- [ ] T064 [US3] Add structured logging for security events in backend/src/services/webhook/webhook_service.py
   - Log signature validation failures (per SC-008)
   - Log duplicate detection events
   - Log unauthorized access attempts
-- [ ] T063 [US3] Add security metrics in backend/src/services/webhook/idempotency_service.py
+- [ ] T065 [US3] Add security metrics in backend/src/services/webhook/idempotency_service.py
   - Count duplicate detections
   - Count signature failures
   - Alert on anomalies
+- [ ] T066 [US3] Create comprehensive README.md in backend/ with API documentation, architecture diagram, and service descriptions
 
 **Checkpoint**: All user stories should now be independently functional - system is production-ready with security hardening
 
@@ -260,63 +263,64 @@ Per plan.md, this is a web application with:
 
 ### Tests for Dashboard
 
-- [ ] T064 [P] Unit test for DashboardStats endpoint in backend/tests/unit/api/test_dashboard.py
-- [ ] T065 [P] Unit test for issues list endpoint in backend/tests/unit/api/test_issues_list.py
-- [ ] T066 [P] Unit test for test cases list endpoint in backend/tests/unit/api/test_test_cases_list.py
-- [ ] T067 [P] Component test for ProcessingStats in frontend/tests/components/ProcessingStats.test.tsx
-- [ ] T068 [P] Component test for IssueList in frontend/tests/components/IssueList.test.tsx
-- [ ] T069 [P] Component test for TestCaseGrid in frontend/tests/components/TestCaseGrid.test.tsx
+- [ ] T067 [P] Unit test for DashboardStats endpoint in backend/tests/unit/api/test_dashboard.py
+- [ ] T068 [P] Unit test for issues list endpoint in backend/tests/unit/api/test_issues_list.py
+- [ ] T069 [P] Unit test for test cases list endpoint in backend/tests/unit/api/test_test_cases_list.py
+- [ ] T070 [P] Component test for ProcessingStats in frontend/tests/components/ProcessingStats.test.tsx
+- [ ] T071 [P] Component test for IssueList in frontend/tests/components/IssueList.test.tsx
+- [ ] T072 [P] Component test for TestCaseGrid in frontend/tests/components/TestCaseGrid.test.tsx
 
 ### Backend API for Dashboard
 
-- [ ] T070 [P] Create DashboardMetrics model in backend/src/models/dashboard_metrics.py
+- [ ] T073 [P] Create DashboardMetrics model in backend/src/models/dashboard_metrics.py
   - total_issues, pending, processing, completed, failed, skipped
   - avg_generation_time, total_prs_created, cache_hit_rate, vector_db_size
-- [ ] T071 [P] Implement GET /api/stats endpoint in backend/src/api/dashboard.py
+- [ ] T074 [P] Implement GET /api/stats endpoint in backend/src/api/dashboard.py
   - Aggregate statistics from ProcessingJob table
   - Return DashboardStats schema per openapi.yaml
-- [ ] T072 [P] Implement GET /api/issues endpoint in backend/src/api/dashboard.py
+- [ ] T075 [P] Implement GET /api/issues endpoint in backend/src/api/dashboard.py
   - Paginated list (limit, offset, status filter)
   - Return IssueStatus schema per openapi.yaml
-- [ ] T073 [P] Implement GET /api/test-cases endpoint in backend/src/api/dashboard.py
+- [ ] T076 [P] Implement GET /api/test-cases endpoint in backend/src/api/dashboard.py
   - Paginated list of TestCaseDocument
   - Return TestCase schema per openapi.yaml
 
 ### Frontend Components
 
-- [ ] T074 [P] Create ProcessingStats component in frontend/src/components/ProcessingStats.tsx
+- [ ] T077 [P] Create ProcessingStats component in frontend/src/components/ProcessingStats.tsx
   - Real-time metrics display (Recharts)
   - Auto-refresh every 5 seconds
   - Show pending, processing, completed, failed counts
   - Show avg generation time
-- [ ] T075 [P] Create IssueList component in frontend/src/components/IssueList.tsx
+- [ ] T078 [P] Create IssueList component in frontend/src/components/IssueList.tsx
   - Table with status badges
   - Pagination controls
   - GitHub issue links
   - Filter by status
-- [ ] T076 [P] Create TestCaseGrid component in frontend/src/components/TestCaseGrid.tsx
+- [ ] T079 [P] Create TestCaseGrid component in frontend/src/components/TestCaseGrid.tsx
   - Card layout
   - Markdown preview
   - PR links
   - Pagination
-- [ ] T077 [P] Create DatabaseStatus component in frontend/src/components/DatabaseStatus.tsx
+- [ ] T080 [P] Create DatabaseStatus component in frontend/src/components/DatabaseStatus.tsx
   - Vector DB size
   - Cache hit rate
   - Component health indicators (ChromaDB, Redis, Ollama)
-- [ ] T078 Create Dashboard page in frontend/src/pages/Dashboard.tsx
+- [ ] T081 Create Dashboard page in frontend/src/pages/Dashboard.tsx
   - Compose all components
   - Handle API errors
   - Show loading states
-- [ ] T079 [P] Create API client service in frontend/src/services/api.ts
+- [ ] T082 [P] Create API client service in frontend/src/services/api.ts
   - Axios instance with base URL
   - Type-safe API methods (getStats, getIssues, getTestCases, getHealth)
   - Error handling
 
 ### Frontend Setup
 
-- [ ] T080 Setup TailwindCSS in frontend (simple styling per user requirement)
-- [ ] T081 Configure React Router for dashboard navigation
-- [ ] T082 Setup React Query for data fetching and caching
+- [ ] T083 Setup TailwindCSS in frontend (simple styling per user requirement)
+- [ ] T084 Configure React Router for dashboard navigation
+- [ ] T085 Setup React Query for data fetching and caching
+- [ ] T086 Create comprehensive README.md in frontend/ with component documentation, architecture, and usage examples
 
 **Checkpoint**: Dashboard is functional and displays all monitoring data
 
@@ -326,14 +330,10 @@ Per plan.md, this is a web application with:
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T083 [P] Create comprehensive README.md in backend/ with API documentation
-- [ ] T084 [P] Create comprehensive README.md in frontend/ with component documentation
-- [ ] T085 [P] Create README.md in backend/src/models/ explaining data model relationships
-- [ ] T086 [P] Create README.md in backend/src/services/ explaining service architecture
 - [ ] T087 [P] Add input validation for 5,000 character limit (FR-016) across all endpoints
 - [ ] T088 [P] Add performance monitoring for <2min generation time (SC-001)
 - [ ] T089 [P] Add concurrency testing for 100 concurrent requests (SC-002)
-- [ ] T090 Implement daily TTL cleanup job for vector embeddings (30-day retention)
+- [ ] T090 Implement daily TTL cleanup job for vector embeddings (30-day retention) using cron scheduler (2 AM UTC)
 - [ ] T091 [P] Add Cloudflare Tunnel setup instructions to quickstart.md
 - [ ] T092 [P] Validate quickstart.md setup guide with fresh environment
 - [ ] T093 Run full integration test suite and verify 70%+ coverage
@@ -364,18 +364,18 @@ Per plan.md, this is a web application with:
 - **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
   - **Critical Path**: T030-T034 (models) → T035 (webhook) → T036 (AI) → T037 (GitHub) → T039 (endpoint)
 - **User Story 2 (P2)**: Can start after Foundational (Phase 2) - Integrates with US1 but independently testable
-  - **Critical Path**: T047 (model) → T048 (embeddings) → T049 (vector service) → T050 (AI integration)
-  - **Integration Point**: T050 updates T036 (AIService) - wait for T036 to complete
+  - **Critical Path**: T049 (model) → T050 (embeddings) → T051 (vector service) → T052 (AI integration)
+  - **Integration Point**: T052 updates T036 (AIService) - wait for T036 to complete
 - **User Story 3 (P3)**: Can start after Foundational (Phase 2) - Enhances US1 webhook service
-  - **Critical Path**: T058 (model) → T059 (idempotency) → T060 (signature) → T061 (integration)
-  - **Integration Point**: T060-T061 update T035 (WebhookService) - wait for T035 to complete
+  - **Critical Path**: T060 (model) → T061 (idempotency) → T062 (signature) → T063 (integration)
+  - **Integration Point**: T062-T063 update T035 (WebhookService) - wait for T035 to complete
 - **Dashboard (Phase 6)**: Can start after Foundational (Phase 2) - Completely independent
-  - **Critical Path**: T070 (model) → T071-T073 (API endpoints) || T074-T079 (frontend components in parallel)
+  - **Critical Path**: T073 (model) → T074-T076 (API endpoints) || T077-T082 (frontend components in parallel)
 
 ### Within Each User Story
 
-1. **Tests FIRST**: All test tasks (T022-T029, T043-T046, T054-T057, T064-T069) MUST be written and FAIL before implementation
-2. **Models before services**: T030-T034 before T035-T038 (US1), T047 before T048-T051 (US2), T058 before T059-T061 (US3)
+1. **Tests FIRST**: All test tasks (T022-T029, T045-T048, T056-T059, T067-T072) MUST be written and FAIL before implementation
+2. **Models before services**: T030-T034 before T035-T038 (US1), T049 before T050-T053 (US2), T060 before T061-T063 (US3)
 3. **Services before endpoints**: T035-T038 before T039 (US1)
 4. **Core implementation before logging**: T035-T039 before T040-T042 (US1)
 5. **Story complete before moving to next priority**: Checkpoint verification required
@@ -398,20 +398,20 @@ Per plan.md, this is a web application with:
 
 **User Story 2 (Phase 4)**:
 
-- Tests: T043-T046 can run in parallel
-- Services: T048 and T049 can run in parallel (embedding vs vector operations)
-- Logging: T052 and T053 can run in parallel
+- Tests: T045-T048 can run in parallel
+- Services: T050 and T051 can run in parallel (embedding vs vector operations)
+- Logging: T054 and T055 can run in parallel
 
 **User Story 3 (Phase 5)**:
 
-- Tests: T054-T057 can run in parallel
+- Tests: T056-T059 can run in parallel
 
 **Dashboard (Phase 6)**:
 
-- Tests: T064-T069 can all run in parallel
-- Backend API: T070-T073 can run in parallel (independent endpoints)
-- Frontend: T074-T079 can all run in parallel (independent components)
-- Setup: T080-T082 can run in parallel
+- Tests: T067-T072 can all run in parallel
+- Backend API: T073-T076 can run in parallel (independent endpoints)
+- Frontend: T077-T082 can all run in parallel (independent components)
+- Setup: T083-T085 can run in parallel
 
 **Across User Stories** (if team has capacity):
 
@@ -420,7 +420,7 @@ Per plan.md, this is a web application with:
 
 **Phase 7 (Polish)**:
 
-- T083-T099 (most tasks) can run in parallel except T093-T094 (run tests) and T100 (final cleanup)
+- T087-T099 (most tasks) can run in parallel except T093-T094 (run tests) and T100 (final cleanup)
 
 ---
 
@@ -443,15 +443,15 @@ git checkout -b feature/us1-models
 ## Parallel Example: Dashboard Components
 
 ```bash
-# After T073 (all dashboard APIs complete), frontend can proceed entirely in parallel:
+# After T076 (all dashboard APIs complete), frontend can proceed entirely in parallel:
 git checkout -b feature/dashboard-ui
-# Terminal 1: ProcessingStats component (T074)
-# Terminal 2: IssueList component (T075)
-# Terminal 3: TestCaseGrid component (T076)
-# Terminal 4: DatabaseStatus component (T077)
-# Terminal 5: API client service (T079)
+# Terminal 1: ProcessingStats component (T077)
+# Terminal 2: IssueList component (T078)
+# Terminal 3: TestCaseGrid component (T079)
+# Terminal 4: DatabaseStatus component (T080)
+# Terminal 5: API client service (T082)
 
-# All components ready in parallel, then compose into Dashboard page (T078)
+# All components ready in parallel, then compose into Dashboard page (T081)
 ```
 
 ---
@@ -524,3 +524,4 @@ After each phase, verify:
 - With parallel execution (2-3 developers): ~2-3 weeks for full system
 
 **Format Validation**: ✅ All tasks follow checklist format with [ID] [P?] [Story] Description + file paths
+**Documentation Synchronization**: ✅ All README tasks inline with code implementation per Constitution IV
