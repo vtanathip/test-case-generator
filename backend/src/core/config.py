@@ -7,9 +7,9 @@ class Settings(BaseSettings):
     """Application configuration from environment variables."""
     
     # GitHub Configuration
-    github_token: str
-    github_webhook_secret: str
-    github_repo: str
+    github_token: str = "test_token"
+    github_webhook_secret: str = "test_secret"
+    github_repo: str = "owner/repo"
     
     # Llama 3.2 Configuration
     llama_model: str = "llama3.2:11b"

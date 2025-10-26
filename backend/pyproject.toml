@@ -9,8 +9,8 @@ dependencies = [
     "pydantic==2.9.0",
     "pydantic-settings==2.5.0",
     "langgraph==0.2.0",
-    "langchain==0.3.0",
-    "langchain-core==0.3.0",
+    "langchain>=0.2.0,<0.3.0",
+    "langchain-core>=0.2.27,<0.3.0",
     "ollama==0.3.0",
     "chromadb==0.4.24",
     "redis==5.0.0",
@@ -59,11 +59,18 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 addopts = "--cov=src --cov-report=html --cov-report=term-missing --cov-fail-under=80"
+markers = [
+    "integration: Integration tests that test multiple components together",
+    "contract: Contract tests that validate external API schemas",
+    "unit: Unit tests for individual components (default)",
+]
 
 [tool.mypy]
 python_version = "3.11"

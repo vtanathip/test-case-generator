@@ -259,11 +259,23 @@ npm run test:coverage
 
 ## 📚 Documentation
 
-- **Specification**: [`specs/001-ai-test-generation/spec.md`](specs/001-ai-test-generation/spec.md)
-- **Implementation Plan**: [`specs/001-ai-test-generation/plan.md`](specs/001-ai-test-generation/plan.md)
-- **API Contract**: [`specs/001-ai-test-generation/contracts/openapi.yaml`](specs/001-ai-test-generation/contracts/openapi.yaml)
-- **Data Model**: [`specs/001-ai-test-generation/data-model.md`](specs/001-ai-test-generation/data-model.md)
-- **Error Catalog**: [`specs/001-ai-test-generation/error-catalog.md`](specs/001-ai-test-generation/error-catalog.md)
+| Category | Document | Description |
+|----------|----------|-------------|
+| **Getting Started** | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Setup, testing, development workflow |
+| **Specification** | [spec.md](specs/001-ai-test-generation/spec.md) | Feature requirements and success criteria |
+| **Implementation** | [plan.md](specs/001-ai-test-generation/plan.md) | Technical implementation plan |
+| **Architecture** | [LangGraph Implementation](docs/langgraph-implementation.md) | AI workflow details |
+| **Data Models** | [data-model.md](specs/001-ai-test-generation/data-model.md) | Entity definitions and state machines |
+| **Error Handling** | [error-catalog.md](specs/001-ai-test-generation/error-catalog.md) | Error codes and recovery strategies |
+| **API Contract** | [contracts/openapi.yaml](specs/001-ai-test-generation/contracts/openapi.yaml) | OpenAPI specification |
+| **Setup Guide** | [quickstart.md](specs/001-ai-test-generation/quickstart.md) | Quick start guide |
+
+### Key Documentation
+
+- 🚀 **New to the project?** Start with [Developer Guide](docs/DEVELOPER_GUIDE.md)
+- 📋 **Running tests?** See [Testing section](docs/DEVELOPER_GUIDE.md#running-tests) in Developer Guide
+- 🏗️ **Understanding architecture?** See [Architecture Overview](docs/DEVELOPER_GUIDE.md#architecture-overview)
+- 📝 **Writing docs?** Follow [Documentation Standards](docs/DOCUMENTATION_STANDARDS.md)
 
 ## 📄 License
 

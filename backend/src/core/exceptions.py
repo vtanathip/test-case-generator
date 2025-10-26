@@ -36,6 +36,17 @@ class InvalidWebhookSignatureError(TestCaseGeneratorException):
         )
 
 
+class InvalidWebhookPayloadError(TestCaseGeneratorException):
+    """E102/E103: Invalid webhook payload structure or missing required fields."""
+    
+    def __init__(self, message: str, error_code: str = "E102"):
+        super().__init__(
+            message=message,
+            error_code=error_code,
+            details={}
+        )
+
+
 class MissingRequiredTagError(TestCaseGeneratorException):
     """E102: Issue does not contain 'generate-tests' tag."""
     
@@ -59,12 +70,12 @@ class InsufficientInformationError(TestCaseGeneratorException):
 
 
 class DuplicateWebhookError(TestCaseGeneratorException):
-    """E105: Duplicate webhook detected (idempotency)."""
+    """E104: Duplicate webhook detected (idempotency)."""
     
     def __init__(self, idempotency_key: str):
         super().__init__(
             message=f"Duplicate webhook detected",
-            error_code="E105",
+            error_code="E104",
             details={"idempotency_key": idempotency_key}
         )
 
@@ -77,6 +88,17 @@ class VectorDatabaseError(TestCaseGeneratorException):
     def __init__(self, message: str, details: Optional[dict] = None):
         super().__init__(
             message=f"Vector database error: {message}",
+            error_code="E201",
+            details=details
+        )
+
+
+class VectorDBQueryError(TestCaseGeneratorException):
+    """E201: Vector database query failed."""
+    
+    def __init__(self, message: str, details: Optional[dict] = None):
+        super().__init__(
+            message=f"Vector DB query failed: {message}",
             error_code="E201",
             details=details
         )
@@ -120,13 +142,13 @@ class InvalidOutputFormatError(TestCaseGeneratorException):
 # E4xx: GitHub API Errors
 
 class GitHubAPIError(TestCaseGeneratorException):
-    """E401: Generic GitHub API error."""
+    """E406: Generic GitHub API error."""
     
-    def __init__(self, message: str, status_code: Optional[int] = None):
+    def __init__(self, message: str, details: Optional[dict] = None):
         super().__init__(
             message=f"GitHub API error: {message}",
-            error_code="E401",
-            details={"status_code": status_code}
+            error_code="E406",
+            details=details or {}
         )
 
 
@@ -141,14 +163,18 @@ class BranchAlreadyExistsError(TestCaseGeneratorException):
         )
 
 
+# Alias for consistency
+GitHubBranchExistsError = BranchAlreadyExistsError
+
+
 class GitHubRateLimitError(TestCaseGeneratorException):
     """E405: GitHub API rate limit exceeded."""
     
-    def __init__(self, reset_at: str):
+    def __init__(self, message: str, details: Optional[dict] = None):
         super().__init__(
-            message=f"GitHub API rate limit exceeded, resets at {reset_at}",
+            message=f"GitHub API rate limit exceeded: {message}",
             error_code="E405",
-            details={"reset_at": reset_at}
+            details=details or {}
         )
 
 
