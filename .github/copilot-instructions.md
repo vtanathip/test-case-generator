@@ -31,7 +31,7 @@ specs/           # Feature specifications
 
 ## Commands
 
-cd backend; pytest; ruff check .
+cd backend; uv pip install -e ".[dev]"; pytest; ruff check .
 
 ## Code Style
 
