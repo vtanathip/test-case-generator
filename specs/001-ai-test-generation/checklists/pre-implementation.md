@@ -14,22 +14,22 @@
 
 - [ ] CHK001 - Are webhook event filtering requirements explicitly defined for all GitHub event types? [Completeness, Spec §FR-002]
 - [ ] CHK002 - Are the specific data fields to extract from webhook payloads documented? [Completeness, Spec §FR-003]
-- [ ] CHK003 - Are requirements defined for handling webhook events without the required tag? [Gap, Exception Flow]
-- [ ] CHK004 - Is the branch naming pattern specification complete with collision handling? [Completeness, Spec §FR-007]
-- [ ] CHK005 - Are requirements defined for what constitutes "insufficient information" in issues? [Gap, Spec Edge Cases]
+- [x] CHK003 - Are requirements defined for handling webhook events without the required tag? [Gap, Exception Flow] → Fixed in spec.md Edge Cases §Concurrent Processing
+- [x] CHK004 - Is the branch naming pattern specification complete with collision handling? [Completeness, Spec §FR-007] → Fixed in spec.md Edge Cases §Branch Name Collisions
+- [x] CHK005 - Are requirements defined for what constitutes "insufficient information" in issues? [Gap, Spec Edge Cases] → Fixed in spec.md Edge Cases §Insufficient Information (body <50 chars OR title-only)
 - [ ] CHK006 - Are the specific fields required in the PR template documented? [Gap, Spec §FR-009]
 - [ ] CHK007 - Are requirements defined for updating existing PRs vs. creating new ones? [Gap]
 
 ### AI Generation & Context Retrieval
 
 - [ ] CHK008 - Are the minimum and maximum number of test scenarios requirements specified? [Completeness, Spec §SC-003]
-- [ ] CHK009 - Are requirements defined for AI generation quality validation before PR creation? [Gap]
-- [ ] CHK010 - Is the Markdown template structure for test cases explicitly specified? [Completeness, Spec §FR-006]
+- [x] CHK009 - Are requirements defined for AI generation quality validation before PR creation? [Gap] → Fixed in ai-prompt-template.md quality validation section
+- [x] CHK010 - Is the Markdown template structure for test cases explicitly specified? [Completeness, Spec §FR-006] → Fixed in test-case-template.md
 - [ ] CHK011 - Are requirements defined for handling AI service downtime or unavailability? [Gap, Exception Flow]
 - [ ] CHK012 - Is the vector database similarity score threshold (0.7) requirement justified and documented? [Completeness, Spec §SC-006]
 - [ ] CHK013 - Are requirements defined for maximum AI generation time before timeout? [Gap, Performance]
 - [ ] CHK014 - Are requirements defined for handling empty or zero-result vector DB queries? [Gap, Spec Edge Cases]
-- [ ] CHK015 - Is the prompt engineering template for the AI agent specified? [Gap]
+- [x] CHK015 - Is the prompt engineering template for the AI agent specified? [Gap] → Fixed in ai-prompt-template.md
 - [ ] CHK016 - Are requirements defined for context window size limits when sending data to AI? [Gap]
 
 ### Vector Database & Storage
@@ -57,10 +57,10 @@
 
 - [ ] CHK028 - Is "within 10 seconds" webhook response time measurable at which system boundary? [Clarity, Spec §FR-001]
 - [ ] CHK029 - Is the 2-minute generation time measured from webhook receipt to PR creation? [Clarity, Spec §SC-001]
-- [ ] CHK030 - Is "gracefully" in error handling requirements quantified with specific behaviors? [Ambiguity, Spec §FR-011]
+- [x] CHK030 - Is "gracefully" in error handling requirements quantified with specific behaviors? [Ambiguity, Spec §FR-011] → Fixed in error-catalog.md recovery actions
 - [ ] CHK031 - Is "relevant historical test cases" selection criteria explicitly defined? [Ambiguity, Spec §FR-004]
-- [ ] CHK032 - Is the "standard template structure" for test cases referenced or defined? [Ambiguity, Spec §FR-006]
-- [ ] CHK033 - Can "insufficient information" be objectively determined by the system? [Measurability, Spec Edge Cases]
+- [x] CHK032 - Is the "standard template structure" for test cases referenced or defined? [Ambiguity, Spec §FR-006] → Fixed in test-case-template.md
+- [x] CHK033 - Can "insufficient information" be objectively determined by the system? [Measurability, Spec Edge Cases] → Fixed in spec.md Edge Cases (body <50 chars OR title-only)
 - [ ] CHK034 - Is "test case generation accuracy" evaluation rubric completely specified? [Clarity, Spec §SC-007]
 - [ ] CHK035 - Are the specific scenarios, edge cases, and expected outcomes template sections defined? [Ambiguity, Spec §FR-006]
 
@@ -68,9 +68,9 @@
 
 - [ ] CHK036 - Is "structured logging" format specification complete beyond JSON format mention? [Clarity, Spec §FR-013]
 - [ ] CHK037 - Is "appropriate logging" for signature validation failures quantified? [Ambiguity, Spec §FR-012]
-- [ ] CHK038 - Are the specific "error gracefully" behaviors defined per failure type? [Ambiguity, Spec §FR-011]
-- [ ] CHK039 - Is "pre-populated with initial set" for vector DB quantified? [Ambiguity, Spec Assumptions]
-- [ ] CHK040 - Is "stable connectivity" requirement for Cloudflare Tunnel quantified? [Ambiguity, Spec Assumptions]
+- [x] CHK038 - Are the specific "error gracefully" behaviors defined per failure type? [Ambiguity, Spec §FR-011] → Fixed in error-catalog.md E001-E050 with specific behaviors
+- [x] CHK039 - Is "pre-populated with initial set" for vector DB quantified? [Ambiguity, Spec Assumptions] → Fixed in spec.md A3 (minimum 50 examples)
+- [x] CHK040 - Is "stable connectivity" requirement for Cloudflare Tunnel quantified? [Ambiguity, Spec Assumptions] → Fixed in spec.md A2 (99.9% uptime)
 
 ---
 
@@ -78,8 +78,8 @@
 
 ### Cross-Requirement Alignment
 
-- [ ] CHK041 - Are retry strategies consistent between AI timeout (3 retries) and other failure modes? [Consistency, Spec §FR-011]
-- [ ] CHK042 - Do the 5,000 character limit and "generous limit" description align with actual use cases? [Consistency, Spec §FR-016]
+- [x] CHK041 - Are retry strategies consistent between AI timeout (3 retries) and other failure modes? [Consistency, Spec §FR-011] → Fixed in error-catalog.md with consistent 3-retry pattern
+- [x] CHK042 - Do the 5,000 character limit and "generous limit" description align with actual use cases? [Consistency, Spec §FR-016] → Fixed in spec.md Edge Cases §Input Truncation
 - [ ] CHK043 - Are logging requirements (correlation IDs) consistently applied across all components? [Consistency, Spec §FR-013]
 - [ ] CHK044 - Is the "minimum 5 test scenarios" requirement (SC-003) consistent with "insufficient information" handling? [Consistency]
 - [ ] CHK045 - Are vector DB retrieval (top 5 results) and similarity threshold (0.7) requirements coordinated? [Consistency, Spec §FR-004, §SC-006]
@@ -136,10 +136,10 @@
 
 ### Recovery & Resilience
 
-- [ ] CHK073 - Are requirements defined for resuming failed jobs after system restart? [Gap, Recovery Flow]
-- [ ] CHK074 - Are requirements defined for cleaning up orphaned branches from failed PR creation? [Gap, Recovery Flow]
-- [ ] CHK075 - Are requirements defined for notifying developers of persistent failures? [Gap, Recovery Flow]
-- [ ] CHK076 - Are requirements defined for manual intervention triggers (admin actions)? [Gap]
+- [x] CHK073 - Are requirements defined for resuming failed jobs after system restart? [Gap, Recovery Flow] → Fixed in spec.md FR-024
+- [x] CHK074 - Are requirements defined for cleaning up orphaned branches from failed PR creation? [Gap, Recovery Flow] → Fixed in spec.md FR-025
+- [x] CHK075 - Are requirements defined for notifying developers of persistent failures? [Gap, Recovery Flow] → Fixed in spec.md FR-026
+- [x] CHK076 - Are requirements defined for manual intervention triggers (admin actions)? [Gap] → Fixed in spec.md FR-027
 
 ---
 
@@ -147,21 +147,21 @@
 
 ### Performance Requirements
 
-- [ ] CHK077 - Are performance requirements defined for vector DB query response time? [Gap, Performance]
-- [ ] CHK078 - Are performance requirements defined for GitHub API operations (branch, commit, PR)? [Gap, Performance]
-- [ ] CHK079 - Is the <200ms p95 webhook latency requirement achievable given downstream operations? [Feasibility, Plan §Constraints]
-- [ ] CHK080 - Are memory and CPU resource limits specified for containerized services? [Gap, Performance]
-- [ ] CHK081 - Are database connection pool sizing requirements documented? [Gap, Performance]
+- [x] CHK077 - Are performance requirements defined for vector DB query response time? [Gap, Performance] → Fixed in spec.md FR-028 + plan.md (<500ms p95)
+- [x] CHK078 - Are performance requirements defined for GitHub API operations (branch, commit, PR)? [Gap, Performance] → Fixed in plan.md performance section (<2s per operation)
+- [x] CHK079 - Is the <200ms p95 webhook latency requirement achievable given downstream operations? [Feasibility, Plan §Constraints] → Fixed in plan.md (async processing, 202 response)
+- [x] CHK080 - Are memory and CPU resource limits specified for containerized services? [Gap, Performance] → Fixed in spec.md FR-029 + plan.md (512MB backend, 256MB frontend, 1 vCPU)
+- [x] CHK081 - Are database connection pool sizing requirements documented? [Gap, Performance] → Fixed in plan.md (10 DB, 5 Redis, 5 GitHub connections)
 
 ### Security Requirements
 
-- [ ] CHK082 - Are requirements defined for webhook secret rotation without downtime? [Gap, Security]
-- [ ] CHK083 - Are requirements defined for secure storage of GitHub tokens and API keys? [Gap, Security]
-- [ ] CHK084 - Are requirements defined for rate limiting to prevent abuse? [Gap, Security]
-- [ ] CHK085 - Are requirements defined for logging sanitization (no secrets in logs)? [Gap, Security]
-- [ ] CHK086 - Are requirements defined for HTTPS/TLS configuration for webhook endpoint? [Gap, Security]
+- [x] CHK082 - Are requirements defined for webhook secret rotation without downtime? [Gap, Security] → Fixed in spec.md FR-019 + quickstart.md (24-hour grace period)
+- [x] CHK083 - Are requirements defined for secure storage of GitHub tokens and API keys? [Gap, Security] → Fixed in spec.md FR-018 + quickstart.md (environment variables, never in code/logs)
+- [x] CHK084 - Are requirements defined for rate limiting to prevent abuse? [Gap, Security] → Fixed in spec.md FR-020 + quickstart.md (100 req/min per repo)
+- [x] CHK085 - Are requirements defined for logging sanitization (no secrets in logs)? [Gap, Security] → Fixed in spec.md FR-021 + quickstart.md (mask tokens, signatures)
+- [x] CHK086 - Are requirements defined for HTTPS/TLS configuration for webhook endpoint? [Gap, Security] → Fixed in spec.md FR-022 + quickstart.md (TLS 1.2+ via Cloudflare Tunnel)
 - [ ] CHK087 - Is the HMAC-SHA256 signature validation algorithm implementation specified? [Completeness, Spec §FR-012]
-- [ ] CHK088 - Are requirements defined for handling compromised webhook secrets? [Gap, Security, Recovery]
+- [x] CHK088 - Are requirements defined for handling compromised webhook secrets? [Gap, Security, Recovery] → Fixed in spec.md FR-023 + quickstart.md (incident response plan)
 
 ### Scalability & Capacity
 
@@ -172,11 +172,11 @@
 
 ### Observability & Monitoring
 
-- [ ] CHK093 - Are requirements defined for metrics collection (Prometheus/Grafana)? [Gap, Observability]
-- [ ] CHK094 - Are requirements defined for alerting on processing failures? [Gap, Observability]
-- [ ] CHK095 - Are requirements defined for distributed tracing correlation across services? [Completeness, Spec §FR-013]
-- [ ] CHK096 - Are requirements defined for log retention policies? [Gap, Operational]
-- [ ] CHK097 - Are requirements defined for dashboard real-time data refresh rates? [Gap, Plan §Frontend]
+- [x] CHK093 - Are requirements defined for metrics collection (Prometheus/Grafana)? [Gap, Observability] → Fixed in spec.md FR-030, FR-032
+- [x] CHK094 - Are requirements defined for alerting on processing failures? [Gap, Observability] → Fixed in spec.md FR-033
+- [x] CHK095 - Are requirements defined for distributed tracing correlation across services? [Completeness, Spec §FR-013] → Fixed in spec.md FR-034
+- [x] CHK096 - Are requirements defined for log retention policies? [Gap, Operational] → Fixed in spec.md FR-035
+- [x] CHK097 - Are requirements defined for dashboard real-time data refresh rates? [Gap, Plan §Frontend] → Fixed in spec.md FR-036
 
 ---
 
@@ -184,20 +184,20 @@
 
 ### External Dependency Validation
 
-- [ ] CHK098 - Are GitHub API version requirements and deprecation handling documented? [Gap, Dependency]
-- [ ] CHK099 - Are Llama 3.2 model version and compatibility requirements specified? [Gap, Dependency]
-- [ ] CHK100 - Are Cloudflare Tunnel availability SLAs and fallback strategies documented? [Gap, Assumption]
-- [ ] CHK101 - Are vector DB (ChromaDB/Qdrant) version and migration requirements specified? [Gap, Dependency]
-- [ ] CHK102 - Are Redis version and persistence requirements documented? [Gap, Dependency]
-- [ ] CHK103 - Are LangGraph version and breaking change handling requirements specified? [Gap, Dependency]
+- [x] CHK098 - Are GitHub API version requirements and deprecation handling documented? [Gap, Dependency] → Fixed in dependencies.md (v3 REST API, 6-month migration)
+- [x] CHK099 - Are Llama 3.2 model version and compatibility requirements specified? [Gap, Dependency] → Fixed in dependencies.md (3.2.1, blue-green deployment)
+- [x] CHK100 - Are Cloudflare Tunnel availability SLAs and fallback strategies documented? [Gap, Assumption] → Fixed in spec.md A2 (99.9% uptime, manual retry fallback)
+- [x] CHK101 - Are vector DB (ChromaDB/Qdrant) version and migration requirements specified? [Gap, Dependency] → Fixed in dependencies.md (ChromaDB 0.4.x, backup-before-upgrade)
+- [x] CHK102 - Are Redis version and persistence requirements documented? [Gap, Dependency] → Fixed in dependencies.md (Redis 7.x, LTS support, rolling upgrade)
+- [x] CHK103 - Are LangGraph version and breaking change handling requirements specified? [Gap, Dependency] → Fixed in dependencies.md (0.2.x, pin version, expect breaking changes)
 
 ### Assumption Risk Assessment
 
-- [ ] CHK104 - Is the "pre-populated vector DB" assumption validated with bootstrapping requirements? [Risk, Spec Assumptions]
-- [ ] CHK105 - Is the "appropriate permissions" assumption validated with permission verification requirements? [Risk, Spec Assumptions]
-- [ ] CHK106 - Is the "stable connectivity" assumption validated with reconnection/retry requirements? [Risk, Spec Assumptions]
-- [ ] CHK107 - Is the "sufficient API quota" assumption validated with quota monitoring requirements? [Risk, Spec Assumptions]
-- [ ] CHK108 - Is the "single repository" assumption documented with multi-repo migration path? [Assumption, Spec Out of Scope]
+- [x] CHK104 - Is the "pre-populated vector DB" assumption validated with bootstrapping requirements? [Risk, Spec Assumptions] → Fixed in spec.md A3 (≥50 examples, seed script)
+- [x] CHK105 - Is the "appropriate permissions" assumption validated with permission verification requirements? [Risk, Spec Assumptions] → Fixed in spec.md A1 (GitHub App permissions, pre-deployment script)
+- [x] CHK106 - Is the "stable connectivity" assumption validated with reconnection/retry requirements? [Risk, Spec Assumptions] → Fixed in spec.md A2 (Cloudflare auto-reconnect, 5-min alert)
+- [x] CHK107 - Is the "sufficient API quota" assumption validated with quota monitoring requirements? [Risk, Spec Assumptions] → Fixed in spec.md A4 (load test, horizontal scaling to 3 replicas)
+- [x] CHK108 - Is the "single repository" assumption documented with multi-repo migration path? [Assumption, Spec Out of Scope] → Fixed in spec.md A8 (documented constraint, future roadmap)
 
 ---
 
@@ -233,8 +233,8 @@
 
 - [ ] CHK122 - Is API contract documentation (OpenAPI/Swagger) referenced or planned? [Gap, Documentation]
 - [ ] CHK123 - Is the webhook payload schema fully documented or referenced? [Gap, Documentation]
-- [ ] CHK124 - Is the test case Markdown template example provided or referenced? [Gap, Documentation]
-- [ ] CHK125 - Are error codes and messages catalog documented? [Gap, Documentation]
+- [x] CHK124 - Is the test case Markdown template example provided or referenced? [Gap, Documentation] → Fixed in test-case-template.md + ai-prompt-template.md
+- [x] CHK125 - Are error codes and messages catalog documented? [Gap, Documentation] → Fixed in error-catalog.md (E001-E050)
 
 ---
 
