@@ -1,4 +1,288 @@
-# Test Case Generator
+# AI Test Case Generator
+
+**AI-powered test case generation system using GitHub webhooks, LangGraph, and Llama 3.2**
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![React 18](https://img.shields.io/badge/react-18-blue.svg)](https://reactjs.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
+## 🚀 Overview
+
+Automatically generate comprehensive test cases from GitHub issues using local AI. When an issue is labeled with `generate-tests`, the system:
+
+1. **Receives** GitHub webhook event
+2. **Retrieves** similar test cases from vector database
+3. **Generates** test case documentation using Llama 3.2
+4. **Commits** Markdown file to new branch
+5. **Creates** pull request with generated tests
+
+**Key Features:**
+
+- 🤖 **Local AI** - Llama 3.2 via Ollama (no external API costs)
+- ⚡ **Fast** - Webhook response <200ms, end-to-end <2min
+- 🔒 **Secure** - HMAC signature verification, secret scanning
+- 📊 **Observable** - Structured logging, metrics dashboard
+- 🔄 **Reliable** - Exponential backoff retries, idempotency cache
+- 🎯 **Context-aware** - Vector similarity search for relevant examples
+
+## 📋 Prerequisites
+
+- **Docker Desktop** 24.0+ with Docker Compose 2.20+
+- **GPU** (recommended): NVIDIA GPU with 8GB+ VRAM for Llama 3.2 11B
+  - *CPU-only*: Use `llama3.2:3b` model (5-10x slower)
+- **GitHub** account with repository access
+- **Cloudflare** account for tunnel setup
+
+## 🏃 Quick Start
+
+### 1. Clone and Configure
+
+```bash
+# Clone repository
+git clone https://github.com/owner/test-case-generator.git
+cd test-case-generator
+
+# Copy environment template
+cp .env.example .env
+
+# Edit .env with your credentials (see Configuration section)
+```
+
+### 2. Start Services
+
+```bash
+# Start all services (backend, frontend, ChromaDB, Redis, Ollama)
+docker-compose up -d
+
+# Pull Llama 3.2 model (first time only, 5-10 minutes)
+docker-compose exec ollama ollama pull llama3.2:11b
+
+# Check service health
+docker-compose ps
+
+# View logs
+docker-compose logs -f backend
+```
+
+### 3. Configure GitHub Webhook
+
+1. Go to **GitHub repository → Settings → Webhooks → Add webhook**
+2. **Payload URL**: `https://your-tunnel-domain.trycloudflare.com/webhooks/github`
+3. **Content type**: `application/json`
+4. **Secret**: Value from `GITHUB_WEBHOOK_SECRET` in `.env`
+5. **Events**: Select "Issues" only
+6. **Active**: ✓ Enabled
+7. **Save webhook**
+
+### 4. Create Test Issue
+
+Create a GitHub issue with:
+- **Label**: `generate-tests`
+- **Title**: "Add user authentication feature"
+- **Body**: "Implement OAuth2 authentication with Google provider. Support login, logout, and token refresh."
+
+Within 2 minutes, check:
+- Dashboard at `http://localhost:3000`
+- New PR in your repository with generated test cases
+
+## 🏗️ Architecture
+
+```text
+GitHub Webhook
+     ↓
+FastAPI Backend (Python 3.11)
+     ↓
+LangGraph Workflow:
+  1. Validate signature
+  2. Check idempotency cache (Redis)
+  3. Query vector DB for context (ChromaDB)
+  4. Generate test cases (Llama 3.2 via Ollama)
+  5. Create branch & commit
+  6. Open pull request
+     ↓
+React Dashboard (TypeScript)
+```
+
+**Tech Stack:**
+
+- **Backend**: Python 3.11, FastAPI, LangGraph, Ollama, PyGithub
+- **Storage**: ChromaDB (vector DB), Redis (cache)
+- **Frontend**: React 18, TypeScript, Vite, TailwindCSS
+- **Infrastructure**: Docker Compose (5 services)
+- **AI**: Llama 3.2 (11B or 90B) running locally
+
+## ⚙️ Configuration
+
+### Required Environment Variables
+
+Edit `.env` file:
+
+```bash
+# GitHub Configuration
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxx          # Personal access token (repo write)
+GITHUB_WEBHOOK_SECRET=your_secret_here  # Webhook signature secret
+GITHUB_REPO=owner/repo                  # Repository full name
+
+# Llama Configuration
+LLAMA_MODEL=llama3.2:11b                # Model variant (3b, 11b, 90b)
+OLLAMA_HOST=http://ollama:11434         # Ollama server URL
+
+# ChromaDB Configuration
+CHROMADB_HOST=chromadb                  # ChromaDB hostname
+CHROMADB_COLLECTION=test_cases          # Collection name
+
+# Redis Configuration
+REDIS_HOST=redis                        # Redis hostname
+REDIS_IDEMPOTENCY_TTL=3600              # Cache TTL (1 hour)
+
+# Cloudflare Tunnel
+CLOUDFLARE_TUNNEL_TOKEN=xxx             # Tunnel token
+```
+
+See `.env.example` for complete configuration.
+
+## 🛠️ Development
+
+### Backend Development
+
+```bash
+cd backend
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -e ".[dev]"
+
+# Run tests
+pytest
+
+# Lint code
+ruff check .
+
+# Start dev server
+uvicorn src.main:app --reload
+```
+
+### Frontend Development
+
+```bash
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Run tests
+npm run test
+
+# Lint code
+npm run lint
+```
+
+### Project Structure
+
+```text
+test-case-generator/
+├── backend/
+│   ├── src/
+│   │   ├── models/          # Pydantic models
+│   │   ├── services/        # Business logic
+│   │   ├── api/             # FastAPI routes
+│   │   └── core/            # Config, logging, clients
+│   ├── tests/               # Backend tests
+│   └── pyproject.toml       # Python dependencies
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # React components
+│   │   ├── pages/           # Route pages
+│   │   └── services/        # API client
+│   ├── package.json         # Node dependencies
+│   └── vite.config.ts       # Vite configuration
+├── docker/
+│   ├── docker-compose.yml   # Service orchestration
+│   ├── Dockerfile.backend   # Backend container
+│   └── Dockerfile.frontend  # Frontend container
+├── specs/                   # Feature specifications
+├── .env.example             # Environment template
+└── README.md                # This file
+```
+
+## 📊 Performance
+
+- **Webhook Response**: <200ms p95
+- **Vector Query**: <500ms p95
+- **End-to-End**: <2min p95 (webhook → PR)
+- **Throughput**: 100 concurrent webhooks, 3.3 AI requests/sec
+- **Resource Limits**: 512MB backend, 4GB AI service, 2GB vector DB
+
+## 🔒 Security
+
+- ✅ HMAC-SHA256 webhook signature verification
+- ✅ GitHub token permissions (repo write only)
+- ✅ Secret scanning in committed files
+- ✅ Rate limiting (100 concurrent requests)
+- ✅ Input validation (Pydantic models)
+- ✅ CORS configuration
+
+## 📝 Testing
+
+```bash
+# Backend tests (80% coverage target)
+cd backend
+pytest --cov=src --cov-report=html
+
+# Frontend tests
+cd frontend
+npm run test:coverage
+```
+
+## 🐛 Troubleshooting
+
+**Issue: Webhook not received**
+- Verify Cloudflare tunnel is running: `docker-compose logs cloudflare-tunnel`
+- Check webhook secret matches `.env` value
+- Confirm issue has `generate-tests` label
+
+**Issue: Slow AI generation**
+- Check GPU availability: `docker-compose exec ollama nvidia-smi`
+- Consider smaller model: `llama3.2:3b`
+- Monitor resource usage: `docker stats`
+
+**Issue: Vector DB empty**
+- Seed initial test cases: See `specs/001-ai-test-generation/quickstart.md`
+- Check ChromaDB logs: `docker-compose logs chromadb`
+
+## 📚 Documentation
+
+- **Specification**: [`specs/001-ai-test-generation/spec.md`](specs/001-ai-test-generation/spec.md)
+- **Implementation Plan**: [`specs/001-ai-test-generation/plan.md`](specs/001-ai-test-generation/plan.md)
+- **API Contract**: [`specs/001-ai-test-generation/contracts/openapi.yaml`](specs/001-ai-test-generation/contracts/openapi.yaml)
+- **Data Model**: [`specs/001-ai-test-generation/data-model.md`](specs/001-ai-test-generation/data-model.md)
+- **Error Catalog**: [`specs/001-ai-test-generation/error-catalog.md`](specs/001-ai-test-generation/error-catalog.md)
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch: `git checkout -b feature/amazing-feature`
+3. Commit changes: `git commit -m 'Add amazing feature'`
+4. Push to branch: `git push origin feature/amazing-feature`
+5. Open pull request
+
+## 🙏 Acknowledgments
+
+- **Llama 3.2** by Meta AI
+- **Ollama** for local LLM serving
+- **LangGraph** for workflow orchestration
+- **FastAPI** for high-performance backend
+
 
 A modular, test-driven framework for generating comprehensive test cases across multiple testing frameworks and languages.
 

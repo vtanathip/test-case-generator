@@ -12,13 +12,26 @@ Auto-generated from all feature plans. Last updated: 2025-10-25
 
 ```text
 backend/
+  src/
+    models/      # Pydantic data models
+    services/    # Business logic
+    api/         # FastAPI routes
+    core/        # Config, logging, clients
+  tests/         # Backend tests
+  pyproject.toml # Python dependencies
 frontend/
-tests/
+  src/
+    components/  # React components
+    pages/       # Route pages
+    services/    # API client
+  package.json   # Node dependencies
+docker/          # Docker Compose and Dockerfiles
+specs/           # Feature specifications
 ```
 
 ## Commands
 
-cd src; pytest; ruff check .
+cd backend; pytest; ruff check .
 
 ## Code Style
 
