@@ -50,7 +50,11 @@
 - `started_at` (datetime): Job start timestamp
 - `completed_at` (datetime | null): Job completion timestamp
 - `error_message` (str | null): Error details if failed
+- `error_code` (str | null): Error code from error-catalog.md (e.g., "E301", "E405")
 - `retry_count` (int, default 0): Number of retry attempts
+- `retry_delays` (list[int], default [5, 15, 45]): Exponential backoff delays in seconds for retries (per FR-011)
+- `last_retry_at` (datetime | null): Timestamp of most recent retry attempt
+- `idempotency_key` (str): SHA256 hash of (repository + issue_number) for duplicate detection (per FR-017)
 - `current_stage` (str): Current workflow stage
 - `correlation_id` (str, UUID): Shared with webhook event
 
@@ -108,16 +112,27 @@ PENDING → SKIPPED (if duplicate/invalid)
 - `issue_number` (int): Source GitHub issue number
 - `test_case_id` (str, UUID): Reference to TestCaseDocument
 - `content` (str): Text content that was embedded
-- `embedding_vector` (list[float], dim 1536): OpenAI embedding vector
-- `metadata` (dict): Additional metadata (labels, repository, etc.)
-- `created_at` (datetime): Creation timestamp
-- `expires_at` (datetime): Expiration timestamp (created_at + 30 days)
+- `embedding_vector` (list[float]): Embedding vector with configurable dimensions
+- `embedding_dimensions` (int, default 384): Vector dimensionality (384 for all-MiniLM-L6-v2, 768 for larger models, 1536 for OpenAI ada-002)
+- `embedding_model` (str, default "all-MiniLM-L6-v2"): Model used to generate embedding
+- `metadata` (dict): Structured metadata for filtering and search
+  - `source_type` (str): Type of source content ("issue_body", "test_scenario", "edge_case", "acceptance_criteria")
+  - `created_at` (datetime): Original content creation timestamp
+  - `issue_number` (int): Source GitHub issue number (duplicate for query convenience)
+  - `repository` (str): Repository name (e.g., "owner/repo")
+  - `labels` (list[str]): GitHub issue labels for context filtering
+  - `similarity_threshold` (float, default 0.7): Minimum similarity score for retrieval (per SC-006)
+- `created_at` (datetime): Embedding creation timestamp
+- `expires_at` (datetime): Expiration timestamp (created_at + 30 days per A10)
 
 **Validation Rules**:
 
-- `embedding_vector` must have dimension 384 (all-MiniLM-L6-v2 format) or 768 (larger models)
-- `expires_at` must be exactly 30 days after `created_at`
-- `content` max 8000 chars (typical embedding model limit)
+- `embedding_vector` length must match `embedding_dimensions` value (384, 768, or 1536)
+- `embedding_dimensions` must be one of: 384 (all-MiniLM-L6-v2), 768 (larger sentence transformers), 1536 (OpenAI ada-002)
+- `expires_at` must be exactly 30 days after `created_at` (configurable via `VECTOR_DB_RETENTION_DAYS`)
+- `content` max 8000 chars (typical embedding model context limit)
+- `metadata.source_type` must be one of: "issue_body", "test_scenario", "edge_case", "acceptance_criteria"
+- `metadata.similarity_threshold` must be between 0.0 and 1.0
 
 **Relationships**:
 

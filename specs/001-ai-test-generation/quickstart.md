@@ -444,7 +444,318 @@ docker-compose exec backend python
 
 ## Production Deployment
 
-### Security Checklist
+### Security Setup (Required for Production)
+
+#### 1. Secret Storage (FR-018: Environment Variable Security)
+
+**Requirement**: Store all secrets in environment variables, never in code or logs
+
+**Setup**:
+
+```bash
+# DO NOT commit .env file to git
+echo ".env" >> .gitignore
+
+# Use secret management service in production
+# Option A: Docker Secrets (Swarm mode)
+echo "ghp_xxxxxxxxxxxxx" | docker secret create github_token -
+
+# Option B: Kubernetes Secrets
+kubectl create secret generic app-secrets \
+  --from-literal=github-token=ghp_xxxxxxxxxxxxx \
+  --from-literal=webhook-secret=your_secret_here
+
+# Option C: HashiCorp Vault (recommended for enterprise)
+vault kv put secret/test-generator/github \
+  token=ghp_xxxxxxxxxxxxx \
+  webhook_secret=your_secret_here
+```
+
+**Validation**:
+
+```bash
+# Verify secrets are NOT in code
+grep -r "ghp_" backend/src/  # Should return empty
+grep -r "webhook_secret" backend/src/  # Should only show env var references
+
+# Verify logs are sanitized (FR-021)
+docker-compose logs backend | grep "ghp_"  # Should return empty
+docker-compose logs backend | grep "Authorization"  # Should show "[REDACTED]"
+```
+
+#### 2. Secret Rotation (FR-019: 24-Hour Grace Period)
+
+**Requirement**: Support graceful secret rotation with 24-hour overlap period
+
+**Rotation Procedure**:
+
+```bash
+# Step 1: Generate new GitHub token
+# GitHub → Settings → Developer settings → Personal access tokens → Generate new token
+
+# Step 2: Add new token to environment with "_NEW" suffix
+export GITHUB_TOKEN_NEW=ghp_yyyyyyyyyyyy  # New token
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxx     # Old token (still valid)
+
+# Step 3: Update application to accept both tokens (24-hour grace period)
+# Application automatically checks both GITHUB_TOKEN and GITHUB_TOKEN_NEW
+
+# Step 4: Update webhook secret in GitHub repository
+# GitHub → Repository → Settings → Webhooks → Edit → Update secret
+
+# Step 5: Wait 24 hours for all in-flight requests to complete
+
+# Step 6: Promote new token to primary (after 24 hours)
+export GITHUB_TOKEN=ghp_yyyyyyyyyyyy      # Promote new to primary
+unset GITHUB_TOKEN_NEW                     # Remove old token
+
+# Step 7: Revoke old token in GitHub
+# GitHub → Settings → Personal access tokens → Revoke old token
+```
+
+**Automated Rotation** (cron job):
+
+```bash
+# Add to crontab (run monthly on 1st at 2 AM UTC)
+0 2 1 * * /usr/local/bin/rotate-secrets.sh
+
+# rotate-secrets.sh contents:
+#!/bin/bash
+set -e
+
+# Generate new token via GitHub API (requires admin token)
+NEW_TOKEN=$(curl -X POST -H "Authorization: token $ADMIN_TOKEN" \
+  https://api.github.com/applications/CLIENT_ID/token \
+  -d '{"scopes":["repo"]}' | jq -r .token)
+
+# Set new token with grace period
+docker exec backend env GITHUB_TOKEN_NEW=$NEW_TOKEN
+
+# Schedule old token removal after 24 hours
+echo "unset GITHUB_TOKEN_NEW" | at now + 24 hours
+```
+
+#### 3. Rate Limiting (FR-020: 100 req/min per Repository)
+
+**Requirement**: Enforce rate limit of 100 webhooks/minute per repository
+
+**Setup** (nginx rate limiting):
+
+```nginx
+# Add to nginx.conf or Cloudflare Worker
+http {
+    # Define rate limit zone: 100 requests/min per repo
+    limit_req_zone $repo_name zone=repo_limit:10m rate=100r/m;
+
+    server {
+        location /webhooks/github {
+            # Extract repository name from webhook payload
+            set $repo_name $http_x_github_repo;
+            
+            # Apply rate limit
+            limit_req zone=repo_limit burst=20 nodelay;
+            limit_req_status 429;
+
+            # Forward to backend
+            proxy_pass http://backend:8000;
+        }
+    }
+}
+```
+
+**Validation**:
+
+```bash
+# Test rate limit with burst of requests
+for i in {1..150}; do
+  curl -X POST http://localhost:8000/webhooks/github \
+    -H "X-GitHub-Repo: owner/repo" \
+    -H "Content-Type: application/json" \
+    -d '{"action":"labeled"}' &
+done
+wait
+
+# Check rate limit responses (should see HTTP 429 after 120 requests)
+docker-compose logs backend | grep "429" | wc -l  # Should show ~30 rejected
+```
+
+#### 4. Log Sanitization (FR-021: Mask Secrets in Logs)
+
+**Requirement**: Sanitize logs to prevent secret leakage
+
+**Implementation** (backend logging configuration):
+
+```python
+# backend/src/core/logging.py
+import logging
+import re
+
+class SanitizingFormatter(logging.Formatter):
+    """Formatter that redacts secrets from log messages"""
+    
+    PATTERNS = [
+        (re.compile(r'ghp_[a-zA-Z0-9]{36}'), '[REDACTED_GITHUB_TOKEN]'),
+        (re.compile(r'sha256=[a-f0-9]{64}'), '[REDACTED_WEBHOOK_SIGNATURE]'),
+        (re.compile(r'Authorization: Bearer .+'), 'Authorization: Bearer [REDACTED]'),
+        (re.compile(r'"token":\s*"[^"]+"'), '"token": "[REDACTED]"'),
+        (re.compile(r'"secret":\s*"[^"]+"'), '"secret": "[REDACTED]"'),
+    ]
+    
+    def format(self, record):
+        msg = super().format(record)
+        for pattern, replacement in self.PATTERNS:
+            msg = pattern.sub(replacement, msg)
+        return msg
+```
+
+**Validation Examples**:
+
+```bash
+# Test log sanitization
+curl -X POST http://localhost:8000/webhooks/github \
+  -H "X-Hub-Signature-256: sha256=abc123..." \
+  -H "Authorization: Bearer ghp_xxxxxxxxxxxxx"
+
+# Check logs show redacted values
+docker-compose logs backend | tail -20
+# Expected output:
+#   INFO: Received webhook with signature=[REDACTED_WEBHOOK_SIGNATURE]
+#   INFO: GitHub API request with token=[REDACTED_GITHUB_TOKEN]
+```
+
+#### 5. TLS Configuration (FR-022: TLS 1.2+ via Cloudflare Tunnel)
+
+**Requirement**: All external connections use TLS 1.2 or higher
+
+**Cloudflare Tunnel Setup**:
+
+```bash
+# Install cloudflared
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+chmod +x cloudflared
+sudo mv cloudflared /usr/local/bin/
+
+# Authenticate with Cloudflare
+cloudflared tunnel login
+
+# Create tunnel
+cloudflared tunnel create test-generator
+
+# Configure tunnel (save to ~/.cloudflared/config.yml)
+tunnel: <TUNNEL_ID>
+credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: test-generator.yourdomain.com
+    service: http://localhost:8000
+    originRequest:
+      noTLSVerify: false  # Enforce TLS verification
+  - service: http_status:404
+
+# Route DNS
+cloudflared tunnel route dns test-generator test-generator.yourdomain.com
+
+# Run tunnel (or add to systemd)
+cloudflared tunnel run test-generator
+```
+
+**TLS Validation**:
+
+```bash
+# Verify TLS 1.2+ is enforced
+curl -v --tlsv1.1 https://test-generator.yourdomain.com/health 2>&1 | grep "SSL"
+# Expected: Connection refused (TLS 1.1 rejected)
+
+curl -v --tlsv1.2 https://test-generator.yourdomain.com/health 2>&1 | grep "SSL"
+# Expected: Success (TLS 1.2 accepted)
+
+# Check TLS configuration
+nmap --script ssl-enum-ciphers -p 443 test-generator.yourdomain.com
+# Expected output:
+#   TLSv1.2:
+#     ciphers:
+#       TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 (secp256r1) - A
+#       TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (secp256r1) - A
+```
+
+#### 6. Incident Response Procedures (FR-023)
+
+**Requirement**: Documented procedures for security incidents
+
+**Incident Response Plan**:
+
+### Phase 1: Detection and Assessment (0-15 minutes)
+
+1. Alert triggered (e.g., unauthorized access attempt, token leak)
+2. Assess severity: CRITICAL (token leaked), HIGH (suspicious activity), MEDIUM (rate limit breach)
+3. Notify security team via PagerDuty/Slack
+
+### Phase 2: Containment (15-30 minutes)
+
+**Token Leak**: Immediately revoke compromised token in GitHub
+
+```bash
+# GitHub → Settings → Personal access tokens → Revoke token ghp_xxxxxxxxxxxxx
+```
+
+**Rotate webhook secret**:
+
+```bash
+# Generate new secret
+NEW_SECRET=$(openssl rand -hex 32)
+# Update in GitHub webhook settings
+# Update GITHUB_WEBHOOK_SECRET in .env
+docker-compose restart backend
+```
+
+**Block malicious IPs**:
+
+```bash
+# Add to nginx/Cloudflare firewall
+iptables -A INPUT -s <MALICIOUS_IP> -j DROP
+```
+
+### Phase 3: Audit and Investigation (30 minutes - 2 hours)
+
+1. Check audit logs for suspicious activity:
+
+   ```bash
+   # Search logs for unauthorized access
+   docker-compose logs backend | grep "401\|403\|Invalid signature"
+   
+   # Export logs for forensic analysis
+   docker-compose logs --since 24h backend > incident-logs-$(date +%Y%m%d).txt
+   ```
+
+2. Review GitHub audit log (Settings → Security → Audit log)
+3. Check vector DB for unauthorized queries
+4. Verify no data exfiltration (check outbound network traffic)
+
+### Phase 4: Recovery (2-4 hours)
+
+1. Generate new secrets (token, webhook secret, Redis password)
+2. Deploy with new secrets (24-hour grace period)
+3. Verify system integrity (run health checks, test workflows)
+4. Monitor for 24 hours for repeat incidents
+
+### Phase 5: Post-Incident (1-2 days)
+
+1. Document incident timeline and impact
+2. Update security policies if needed
+3. Conduct blameless postmortem with team
+4. Update runbook with lessons learned
+
+**Contact List**:
+
+```text
+Security Lead: security-lead@company.com
+On-Call Engineer: oncall@company.com
+GitHub Admin: github-admin@company.com
+Incident Response Slack: #security-incidents
+PagerDuty Escalation: https://company.pagerduty.com/escalation_policies/P123456
+```
+
+### Security Checklist (Pre-Production)
 
 - [ ] Use GitHub App authentication (not personal token)
 - [ ] Enable webhook signature validation (verify `GITHUB_WEBHOOK_SECRET` set)
