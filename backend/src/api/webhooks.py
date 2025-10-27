@@ -32,9 +32,9 @@ async def process_webhook_background(
     jobs_dict: dict
 ):
     """Background task to process webhook and generate test cases.
-    
+
     This runs asynchronously after returning 202 to GitHub.
-    
+
     Args:
         webhook_event: Validated webhook event
         job: Initial processing job
@@ -47,29 +47,30 @@ async def process_webhook_background(
         issue_number=webhook_event.issue_number,
         repository=webhook_event.repository
     )
-    
+
     try:
         log.info(
             "background_task_started",
             stage=job.current_stage.value
         )
-        
+
         # Execute the full LangGraph workflow
         completed_job = await ai_service.execute_workflow(
             job=job,
             webhook_event=webhook_event
         )
-        
+
         # Update job in storage
         jobs_dict[job.job_id] = completed_job
-        
+
         log.info(
             "background_task_completed",
             status=completed_job.status.value,
             stage=completed_job.current_stage.value,
-            duration_seconds=(completed_job.completed_at - completed_job.started_at).total_seconds() if completed_job.completed_at else None
+            duration_seconds=(completed_job.completed_at - completed_job.started_at).total_seconds(
+            ) if completed_job.completed_at else None
         )
-        
+
     except Exception as e:
         log.error(
             "background_task_failed",
@@ -93,24 +94,24 @@ async def github_webhook(
     x_github_delivery: str = Header(..., alias="X-GitHub-Delivery")
 ) -> JSONResponse:
     """Handle GitHub webhook for test case generation.
-    
+
     This endpoint:
     1. Validates webhook signature (HMAC-SHA256)
     2. Checks for 'generate-tests' label
     3. Creates WebhookEvent and ProcessingJob
     4. Dispatches background task for AI workflow
     5. Returns 202 Accepted immediately
-    
+
     Args:
         request: FastAPI request object
         background_tasks: Background task manager
         x_github_event: GitHub event type (e.g., "issues")
         x_hub_signature_256: HMAC-SHA256 signature
         x_github_delivery: Unique delivery ID
-    
+
     Returns:
         JSONResponse with 202 status and correlation_id
-    
+
     Raises:
         HTTPException 400: Invalid webhook format
         HTTPException 401: Invalid signature
@@ -120,14 +121,14 @@ async def github_webhook(
     # Get app state (services injected by main.py)
     webhook_service: WebhookService = request.app.state.webhook_service
     ai_service: AIService = request.app.state.ai_service
-    
+
     log = logger.bind(
         event_type=x_github_event,
         delivery_id=x_github_delivery
     )
-    
+
     log.info("webhook_received")
-    
+
     # Parse webhook payload
     try:
         payload = await request.json()
@@ -140,10 +141,10 @@ async def github_webhook(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid JSON payload: {str(e)}"
         )
-    
+
     # Get raw body for signature validation
     body_bytes = await request.body()
-    
+
     try:
         # Validate signature and parse event
         # Construct event type (e.g., "issues.opened")
@@ -152,13 +153,13 @@ async def github_webhook(
             full_event_type = f"issues.{event_type_str}"
         else:
             full_event_type = x_github_event
-        
+
         webhook_event = await webhook_service.process_webhook(
             payload=body_bytes,
             signature=x_hub_signature_256,
             event_type=full_event_type
         )
-        
+
     except InvalidWebhookSignatureError as e:
         log.warning(
             "webhook_signature_invalid",
@@ -172,7 +173,7 @@ async def github_webhook(
                 "details": e.details
             }
         )
-    
+
     except DuplicateWebhookError as e:
         idempotency_key = e.details.get("idempotency_key", "unknown")
         log.info(
@@ -189,7 +190,7 @@ async def github_webhook(
             },
             headers={"X-Idempotency-Key": idempotency_key}
         )
-    
+
     except InvalidWebhookPayloadError as e:
         # Missing 'generate-tests' label or other validation error
         log.warning(
@@ -205,21 +206,21 @@ async def github_webhook(
                 "details": e.details
             }
         )
-    
+
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Webhook processing error: {str(e)}"
         )
-    
+
     # Create processing job
     correlation_id = str(uuid4())
-    
+
     # Generate idempotency key from repository + issue number
     import hashlib
     key_string = f"{webhook_event.repository}-{webhook_event.issue_number}"
     idempotency_key = hashlib.sha256(key_string.encode('utf-8')).hexdigest()
-    
+
     job = ProcessingJob(
         job_id=str(uuid4()),
         webhook_event_id=webhook_event.event_id,
@@ -235,23 +236,23 @@ async def github_webhook(
         current_stage=WorkflowStage.RECEIVE,
         correlation_id=correlation_id
     )
-    
+
     log = log.bind(
         job_id=job.job_id,
         correlation_id=correlation_id,
         issue_number=webhook_event.issue_number,
         repository=webhook_event.repository
     )
-    
+
     log.info(
         "job_created",
         status=job.status.value,
         stage=job.current_stage.value
     )
-    
+
     # Store initial job in app state
     request.app.state.jobs[job.job_id] = job
-    
+
     # Dispatch background task
     background_tasks.add_task(
         process_webhook_background,
@@ -260,12 +261,12 @@ async def github_webhook(
         ai_service=ai_service,
         jobs_dict=request.app.state.jobs
     )
-    
+
     log.info(
         "webhook_accepted",
         status_code=202
     )
-    
+
     # Return 202 Accepted immediately
     return JSONResponse(
         status_code=status.HTTP_202_ACCEPTED,
@@ -291,7 +292,7 @@ async def github_webhook(
 )
 async def webhook_health() -> Dict[str, Any]:
     """Health check for webhook endpoint.
-    
+
     Returns:
         Dictionary with status and timestamp
     """

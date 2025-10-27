@@ -137,7 +137,8 @@ REDIS_PORT=6379                         # Redis port
 REDIS_TTL=3600                          # Idempotency cache TTL (1 hour)
 
 # Cloudflare Tunnel (for webhook endpoint)
-CLOUDFLARE_TUNNEL_TOKEN=xxx             # Get from Cloudflare dashboard
+CLOUDFLARE_TUNNEL_TOKEN=xxx             # Named Tunnel: Get from dashboard
+                                        # Quick Tunnel: Not needed (for dev/test)
 
 # Logging
 LOG_LEVEL=INFO                          # DEBUG, INFO, WARNING, ERROR
@@ -145,9 +146,24 @@ STRUCTURED_LOGGING=true                 # Enable JSON logging
 ```
 
 **Getting GitHub Token**:
+
 1. Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
 2. Generate new token with scopes: `repo`, `admin:repo_hook`
 3. Copy token to `GITHUB_TOKEN` in `.env`
+
+**Cloudflare Tunnel Options**:
+
+- **Quick Tunnel** (Experimental/Dev - Recommended for testing):
+  - No configuration needed in `.env`
+  - Run: `cloudflared tunnel --url http://localhost:8000`
+  - URL changes on restart (manual webhook update required)
+  - Download: <https://github.com/cloudflare/cloudflared/releases/latest>
+
+- **Named Tunnel** (Production):
+  - Persistent URL, requires Cloudflare account
+  - Set `CLOUDFLARE_TUNNEL_TOKEN` in `.env`
+  - See: <https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/>
+
 
 ---
 
@@ -162,7 +178,7 @@ STRUCTURED_LOGGING=true                 # Enable JSON logging
 docker-compose up -d
 
 # Pull Llama 3.2 model (first time only, ~5-10 minutes)
-docker-compose exec ollama ollama pull llama3.2:11b
+docker-compose exec ollama ollama pull llama3.2:latest
 
 # Check service status
 docker-compose ps

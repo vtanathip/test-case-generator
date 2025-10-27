@@ -23,35 +23,37 @@ class TestEndToEndWorkflow:
         from src.services.ai_service import AIService
         from src.services.github_service import GitHubService
         from src.core.config import settings
-        
+
         app = create_app()
-        
+
         # Manually initialize state (lifespan doesn't run with httpx test client)
         app.state.jobs = {}  # In-memory job storage
-        
+
         app.state.redis_client = Mock()
         app.state.redis_client.exists = AsyncMock(return_value=False)
         app.state.redis_client.set_with_ttl = AsyncMock()
-        
+
         app.state.vector_db = Mock()
         app.state.vector_db.query_similar = AsyncMock(return_value=[])
-        
+
         app.state.llm_client = Mock()
-        app.state.llm_client.generate = AsyncMock(return_value="# Test Cases\\n\\nGenerated test cases...")
-        
+        app.state.llm_client.generate = AsyncMock(
+            return_value="# Test Cases\\n\\nGenerated test cases...")
+
         app.state.github_client = Mock()
         app.state.github_client.create_branch = AsyncMock()
         app.state.github_client.create_or_update_file = AsyncMock()
-        app.state.github_client.create_pull_request = AsyncMock(return_value={"number": 1, "html_url": "https://github.com/owner/repo/pull/1"})
+        app.state.github_client.create_pull_request = AsyncMock(
+            return_value={"number": 1, "html_url": "https://github.com/owner/repo/pull/1"})
         app.state.github_client.add_issue_comment = AsyncMock()
-        
+
         app.state.embedding_service = Mock()
-        
+
         app.state.webhook_service = WebhookService(
             redis_client=app.state.redis_client,
             config=settings
         )
-        
+
         app.state.ai_service = AIService(
             llm_client=app.state.llm_client,
             vector_db=app.state.vector_db,
@@ -60,12 +62,12 @@ class TestEndToEndWorkflow:
             redis_client=app.state.redis_client,
             config=settings
         )
-        
+
         app.state.github_service = GitHubService(
             github_client=app.state.github_client,
             config=settings
         )
-        
+
         yield app
         # No cleanup needed
 
@@ -73,7 +75,7 @@ class TestEndToEndWorkflow:
     async def test_client(self, app):
         """Fixture for async HTTP test client."""
         from httpx import AsyncClient, ASGITransport
-        
+
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
 
@@ -133,13 +135,13 @@ class TestEndToEndWorkflow:
         mock_vector_db = app.state.vector_db
         mock_llm = app.state.llm_client
         mock_github = app.state.github_client
-        
+
         # Reset and configure mock return values
         mock_vector_db.query_similar = AsyncMock(return_value=[
             {"issue_number": 38, "content": "Test OAuth flow", "similarity": 0.85},
             {"issue_number": 39, "content": "Test token refresh", "similarity": 0.80}
         ])
-        
+
         mock_llm.generate = AsyncMock(return_value="""# Test Cases: Add OAuth2 Authentication
 
 ## Scenario 1: Successful Google OAuth Login
@@ -148,7 +150,7 @@ class TestEndToEndWorkflow:
 **When**: User clicks "Login with Google"
 **Then**: User is redirected to Google OAuth consent screen
 """)
-        
+
         # Reset and configure GitHub operations
         mock_github.create_branch = AsyncMock()
         mock_github.create_or_update_file = AsyncMock()
@@ -158,11 +160,12 @@ class TestEndToEndWorkflow:
             "state": "open"
         })
         mock_github.add_issue_comment = AsyncMock()
-        
+
         # Generate valid signature
-        signature = self.generate_signature(valid_webhook_payload, webhook_secret)
+        signature = self.generate_signature(
+            valid_webhook_payload, webhook_secret)
         delivery_id = "12345678-1234-1234-1234-123456789012"
-        
+
         # Send webhook request
         start_time = datetime.now()
         response = await test_client.post(
@@ -175,41 +178,41 @@ class TestEndToEndWorkflow:
                 "Content-Type": "application/json"
             }
         )
-        
+
         # Verify webhook accepted (202 Accepted for async processing)
         assert response.status_code == 202
         response_data = response.json()
         assert "job_id" in response_data
         assert response_data["status"] == "accepted"
-        
+
         # Wait for workflow completion (with timeout)
         job_id = response_data["job_id"]
         max_wait = 120  # 2 minutes per FR-010
         poll_interval = 2  # Poll every 2 seconds
-        
+
         elapsed = 0
         job_completed = False
-        
+
         while elapsed < max_wait:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
-            
+
             # Check job status
             status_response = await test_client.get(f"/api/jobs/{job_id}")
             status_data = status_response.json()
-            
+
             if status_data["status"] == JobStatus.COMPLETED:
                 job_completed = True
                 break
             elif status_data["status"] == JobStatus.FAILED:
                 pytest.fail(f"Job failed: {status_data.get('error_message')}")
-        
+
         # Verify completion within time limit
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
         assert job_completed, f"Workflow did not complete within {max_wait}s"
         assert duration < max_wait, f"Workflow took {duration}s (limit: {max_wait}s)"
-        
+
         # Verify all stages executed
         assert mock_vector_db.query_similar.called
         assert mock_llm.generate.called
@@ -231,26 +234,27 @@ class TestEndToEndWorkflow:
         # Configure Redis mock to track idempotency keys
         redis_mock = app.state.redis_client
         stored_keys = {}
-        
+
         async def mock_exists(key):
             return key in stored_keys
-        
+
         async def mock_set_with_ttl(key, value, ttl):
             stored_keys[key] = value
-        
+
         redis_mock.exists = AsyncMock(side_effect=mock_exists)
         redis_mock.set_with_ttl = AsyncMock(side_effect=mock_set_with_ttl)
-        
-        signature = self.generate_signature(valid_webhook_payload, webhook_secret)
+
+        signature = self.generate_signature(
+            valid_webhook_payload, webhook_secret)
         delivery_id = "duplicate-test-delivery-id"
-        
+
         headers = {
             "X-GitHub-Event": "issues",
             "X-Hub-Signature-256": signature,
             "X-GitHub-Delivery": delivery_id,
             "Content-Type": "application/json"
         }
-        
+
         # Send first webhook (should succeed)
         response1 = await test_client.post(
             "/api/webhooks/github",
@@ -259,14 +263,14 @@ class TestEndToEndWorkflow:
         )
         assert response1.status_code == 202
         job_id1 = response1.json()["job_id"]
-        
+
         # Send duplicate webhook immediately (should be rejected)
         response2 = await test_client.post(
             "/api/webhooks/github",
             json=valid_webhook_payload,
             headers=headers
         )
-        
+
         # Verify duplicate rejected with 409 Conflict
         assert response2.status_code == 409
         error_data = response2.json()
@@ -282,7 +286,7 @@ class TestEndToEndWorkflow:
     ):
         """Test webhook with invalid signature is rejected (E101)."""
         invalid_signature = "sha256=invalid_signature_hash_12345"
-        
+
         response = await test_client.post(
             "/api/webhooks/github",
             json=valid_webhook_payload,
@@ -293,7 +297,7 @@ class TestEndToEndWorkflow:
                 "Content-Type": "application/json"
             }
         )
-        
+
         # Verify rejected with 401 Unauthorized
         assert response.status_code == 401
         error_data = response.json()
@@ -316,9 +320,9 @@ class TestEndToEndWorkflow:
                 "labels": [{"name": "enhancement"}]
             }
         }
-        
+
         signature = self.generate_signature(invalid_payload, webhook_secret)
-        
+
         response = await test_client.post(
             "/api/webhooks/github",
             json=invalid_payload,
@@ -329,7 +333,7 @@ class TestEndToEndWorkflow:
                 "Content-Type": "application/json"
             }
         )
-        
+
         # Verify rejected with 400 Bad Request
         assert response.status_code == 400
         error_data = response.json()
@@ -350,7 +354,7 @@ class TestEndToEndWorkflow:
         mock_vector_db = app.state.vector_db
         mock_llm = app.state.llm_client
         mock_github = app.state.github_client
-        
+
         # Mock vector DB with specific context
         context_sources = [
             {"issue_number": 38, "content": "OAuth test", "similarity": 0.85},
@@ -358,7 +362,7 @@ class TestEndToEndWorkflow:
             {"issue_number": 40, "content": "Login test", "similarity": 0.75}
         ]
         mock_vector_db.query_similar = AsyncMock(return_value=context_sources)
-        
+
         mock_llm.generate = AsyncMock(return_value="# Test Cases")
         mock_github.create_branch = AsyncMock()
         mock_github.create_or_update_file = AsyncMock()
@@ -367,9 +371,10 @@ class TestEndToEndWorkflow:
             "html_url": "https://github.com/owner/test-repo/pull/123"
         })
         mock_github.add_issue_comment = AsyncMock()
-        
-        signature = self.generate_signature(valid_webhook_payload, webhook_secret)
-        
+
+        signature = self.generate_signature(
+            valid_webhook_payload, webhook_secret)
+
         response = await test_client.post(
             "/api/webhooks/github",
             json=valid_webhook_payload,
@@ -380,12 +385,12 @@ class TestEndToEndWorkflow:
                 "Content-Type": "application/json"
             }
         )
-        
+
         assert response.status_code == 202
-        
+
         # Wait for completion
         await asyncio.sleep(5)
-        
+
         # Verify PR was created
         assert mock_github.create_pull_request.called
         # In a real test we'd check the PR body includes context, but since
@@ -409,11 +414,12 @@ class TestEndToEndWorkflow:
         mock_vector_db = app.state.vector_db
         mock_llm = app.state.llm_client
         mock_github = app.state.github_client
-        
+
         mock_vector_db.query_similar = AsyncMock(return_value=[])
-        
+
         # Mock LLM to timeout twice, succeed on third attempt
         call_count = 0
+
         async def mock_generate_with_retries(*args, **kwargs):
             nonlocal call_count
             call_count += 1
@@ -421,7 +427,7 @@ class TestEndToEndWorkflow:
                 await asyncio.sleep(0.1)
                 raise asyncio.TimeoutError("AI timeout")
             return "# Test Cases"
-        
+
         mock_llm.generate = mock_generate_with_retries
         mock_github.create_branch = AsyncMock()
         mock_github.create_or_update_file = AsyncMock()
@@ -430,9 +436,10 @@ class TestEndToEndWorkflow:
             "html_url": "https://github.com/owner/test-repo/pull/123"
         })
         mock_github.add_issue_comment = AsyncMock()
-        
-        signature = self.generate_signature(valid_webhook_payload, webhook_secret)
-        
+
+        signature = self.generate_signature(
+            valid_webhook_payload, webhook_secret)
+
         response = await test_client.post(
             "/api/webhooks/github",
             json=valid_webhook_payload,
@@ -443,17 +450,17 @@ class TestEndToEndWorkflow:
                 "Content-Type": "application/json"
             }
         )
-        
+
         assert response.status_code == 202
-        
+
         # Wait for retries to complete
         await asyncio.sleep(30)  # Allow time for 3 retries with backoff
-        
+
         # Verify job eventually succeeded
         job_id = response.json()["job_id"]
         status_response = await test_client.get(f"/api/jobs/{job_id}")
         status_data = status_response.json()
-        
+
         assert status_data["status"] == JobStatus.COMPLETED
         assert call_count == 3  # Retried twice, succeeded third time
 
@@ -468,9 +475,9 @@ class TestEndToEndWorkflow:
     ):
         """Test correlation ID is tracked throughout entire workflow."""
         with patch.object(app.state, 'vector_db') as mock_vector_db, \
-             patch.object(app.state, 'llm_client') as mock_llm, \
-             patch.object(app.state, 'github_client') as mock_github:
-            
+                patch.object(app.state, 'llm_client') as mock_llm, \
+                patch.object(app.state, 'github_client') as mock_github:
+
             mock_vector_db.query_similar = AsyncMock(return_value=[])
             mock_llm.generate = AsyncMock(return_value="# Test Cases")
             mock_github.create_branch = AsyncMock()
@@ -480,9 +487,10 @@ class TestEndToEndWorkflow:
                 "html_url": "https://github.com/owner/test-repo/pull/123"
             })
             mock_github.add_issue_comment = AsyncMock()
-            
-            signature = self.generate_signature(valid_webhook_payload, webhook_secret)
-            
+
+            signature = self.generate_signature(
+                valid_webhook_payload, webhook_secret)
+
             response = await test_client.post(
                 "/api/webhooks/github",
                 json=valid_webhook_payload,
@@ -493,18 +501,18 @@ class TestEndToEndWorkflow:
                     "Content-Type": "application/json"
                 }
             )
-            
+
             assert response.status_code == 202
             correlation_id = response.json()["correlation_id"]
-            
+
             # Verify correlation_id is a valid UUID
             import uuid
             assert uuid.UUID(correlation_id)
-            
+
             # Wait and check job status includes same correlation_id
             await asyncio.sleep(2)
             job_id = response.json()["job_id"]
             status_response = await test_client.get(f"/api/jobs/{job_id}")
             status_data = status_response.json()
-            
+
             assert status_data["correlation_id"] == correlation_id

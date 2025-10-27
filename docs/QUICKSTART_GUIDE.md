@@ -60,9 +60,72 @@ Should return: `{"status":"healthy",...}`
 
 ---
 
+## 🌐 Exposing Backend with Cloudflare Quick Tunnel (Experimental)
+
+For testing GitHub webhooks without production deployment:
+
+### Install cloudflared
+
+Download from: https://github.com/cloudflare/cloudflared/releases/latest
+
+```powershell
+# Verify installation
+cloudflared --version
+```
+
+### Start Quick Tunnel
+
+```powershell
+# Expose backend on port 8000
+cloudflared tunnel --url http://localhost:8000
+```
+
+**Output will show**:
+```
+Your quick Tunnel has been created! Visit it at (it may take some time to be reachable):
+https://random-words-1234.trycloudflare.com
+```
+
+**⚠️ Important Notes**:
+- URL changes every time you restart the tunnel
+- You'll need to manually update GitHub webhook URL after each restart
+- **For experimental use only** - use Named Tunnel for production
+- Keep terminal open while testing webhooks
+
+### Configure GitHub Webhook
+
+1. Go to: `https://github.com/vtanathip/test-case-generator/settings/hooks`
+2. Click "Add webhook"
+3. **Payload URL**: `https://YOUR-TUNNEL-URL.trycloudflare.com/api/webhooks/github` (replace with actual tunnel URL)
+4. **Content type**: `application/json`
+5. **Secret**: Copy `GITHUB_WEBHOOK_SECRET` from your `.env` file
+6. **Events**: Select "Let me select individual events" → Check only "Issues"
+7. Click "Add webhook"
+
+### Test Webhook Connection
+
+Create a test issue with the `generate-tests` label:
+
+1. Go to: `https://github.com/vtanathip/test-case-generator/issues/new`
+2. Title: `Test webhook integration`
+3. Body: `This is a test issue to verify webhook connectivity. The system should generate test cases for this feature.`
+4. Labels: Add `generate-tests`
+5. Click "Submit new issue"
+
+Check backend logs:
+```powershell
+docker-compose logs -f backend
+```
+
+You should see webhook processing logs with correlation ID.
+
+**🔄 Remember**: If you restart `cloudflared`, update the webhook URL in GitHub settings!
+
+---
+
 ## 🧪 Testing the MVP (Without GitHub Webhooks)
 
-You can test the core functionality locally using the API directly.
+Alternatively, you can test the core functionality locally using the API directly without exposing via tunnel.
 
 ### Test 1: Manual Webhook Simulation
 
