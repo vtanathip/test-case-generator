@@ -27,7 +27,7 @@ RUN npm install -g serve
 COPY --from=builder /app/dist /app/dist
 
 # Create non-root user
-RUN adduser -D -u 1000 appuser && \
+RUN adduser -D appuser && \
     chown -R appuser:appuser /app
 USER appuser
 

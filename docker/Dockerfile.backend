@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
     && curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # Add uv to PATH
-ENV PATH="/root/.cargo/bin:$PATH"
+ENV PATH="/root/.local/bin:$PATH"
 
 # Copy dependency files
 COPY backend/pyproject.toml /app/
@@ -24,7 +24,7 @@ RUN uv pip install --system --no-cache -e .
 COPY backend/src /app/src
 
 # Create non-root user
-RUN useradd -m -u 1000 appuser && \
+RUN useradd -m appuser && \
     chown -R appuser:appuser /app
 USER appuser
 
