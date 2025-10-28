@@ -404,6 +404,7 @@ For detailed troubleshooting including:
 
 | Document | Description | When to Read |
 |----------|-------------|--------------|
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | **System architecture overview** | **Understanding system design and components** |
 | [langgraph-implementation.md](docs/langgraph-implementation.md) | AI workflow architecture | Understanding LangGraph state machine |
 | [DOCUMENTATION_STANDARDS.md](docs/DOCUMENTATION_STANDARDS.md) | Documentation guidelines | Writing or updating docs |
 | [DOCUMENTATION_AUDIT_REPORT.md](docs/DOCUMENTATION_AUDIT_REPORT.md) | Documentation review results | Checking doc quality |
@@ -423,9 +424,9 @@ For detailed troubleshooting including:
 | Scenario | Read This |
 |----------|-----------|
 | 🚀 **First time user** | README → QUICKSTART_GUIDE → TEST_CASES |
-| � **Something broken** | TROUBLESHOOTING → Check logs → Error catalog |
+| 🐛 **Something broken** | TROUBLESHOOTING → Check logs → Error catalog |
 | 👨‍💻 **Contributing code** | DEVELOPER_GUIDE → DOCUMENTATION_STANDARDS |
-| 🏗️ **Understanding architecture** | langgraph-implementation → spec.md → plan.md |
+| 🏗️ **Understanding architecture** | ARCHITECTURE → langgraph-implementation → spec.md |
 | ✅ **Testing changes** | TEST_CASES → DEVELOPER_GUIDE (testing section) |
 | 📝 **Writing documentation** | DOCUMENTATION_STANDARDS → Existing docs as examples |
 
