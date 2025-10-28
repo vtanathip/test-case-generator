@@ -1,6 +1,7 @@
 """Jobs API endpoints for checking processing job status."""
-from typing import Dict, Any
-from fastapi import APIRouter, Request, HTTPException, status
+from typing import Any
+
+from fastapi import APIRouter, HTTPException, Request, status
 
 from src.models.processing_job import ProcessingJob
 
@@ -15,7 +16,7 @@ router = APIRouter()
 async def get_job_status(
     job_id: str,
     request: Request
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Get the status of a processing job.
     
     Args:
@@ -30,15 +31,15 @@ async def get_job_status(
     """
     # Get jobs from app state
     jobs = getattr(request.app.state, 'jobs', {})
-    
+
     if job_id not in jobs:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Job {job_id} not found"
         )
-    
+
     job: ProcessingJob = jobs[job_id]
-    
+
     # Return job data (convert enums to strings)
     return {
         "job_id": job.job_id,
@@ -60,7 +61,7 @@ async def get_job_status(
     summary="List Jobs",
     description="List all processing jobs (for debugging)"
 )
-async def list_jobs(request: Request) -> Dict[str, Any]:
+async def list_jobs(request: Request) -> dict[str, Any]:
     """List all jobs in the system.
     
     Args:
@@ -70,7 +71,7 @@ async def list_jobs(request: Request) -> Dict[str, Any]:
         List of job IDs and statuses
     """
     jobs = getattr(request.app.state, 'jobs', {})
-    
+
     return {
         "count": len(jobs),
         "jobs": [

@@ -1,8 +1,8 @@
 """Health check endpoint."""
+
+import structlog
 from fastapi import APIRouter, status
 from pydantic import BaseModel
-from typing import Dict
-import structlog
 
 logger = structlog.get_logger()
 
@@ -13,7 +13,7 @@ class HealthResponse(BaseModel):
     """Health check response model."""
     status: str
     version: str
-    services: Dict[str, str]
+    services: dict[str, str]
 
 
 @router.get(
@@ -34,9 +34,9 @@ async def health_check() -> HealthResponse:
         "chromadb": "unknown",
         "ollama": "unknown",
     }
-    
+
     logger.debug("health_check_requested")
-    
+
     return HealthResponse(
         status="healthy",
         version="0.1.0",

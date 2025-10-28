@@ -1,14 +1,15 @@
 """FastAPI application factory."""
 from contextlib import asynccontextmanager
+
+import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-import structlog
 
+from src.api import health, jobs, webhooks
 from src.core.config import settings
-from src.core.logging import setup_logging, bind_correlation_id, unbind_correlation_id
 from src.core.exceptions import TestCaseGeneratorException
-from src.api import health, webhooks, jobs
+from src.core.logging import bind_correlation_id, setup_logging, unbind_correlation_id
 
 logger = structlog.get_logger()
 
@@ -25,10 +26,10 @@ async def lifespan(app: FastAPI):
     try:
         # Initialize real clients
         from src.core.cache import RedisClient
-        from src.core.vector_db import VectorDBClient
-        from src.core.llm_client import LLMClient
-        from src.core.github_client import GitHubClient
         from src.core.embeddings import EmbeddingService
+        from src.core.github_client import GitHubClient
+        from src.core.llm_client import LLMClient
+        from src.core.vector_db import VectorDBClient
 
         logger.info("initializing_clients")
 
@@ -80,9 +81,9 @@ async def lifespan(app: FastAPI):
         raise
 
     # Initialize services
-    from src.services.webhook_service import WebhookService
     from src.services.ai_service import AIService
     from src.services.github_service import GitHubService
+    from src.services.webhook_service import WebhookService
 
     app.state.webhook_service = WebhookService(
         redis_client=app.state.redis_client,

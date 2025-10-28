@@ -1,9 +1,10 @@
 """Unit tests for ProcessingJob model."""
-import pytest
 from datetime import datetime, timedelta
+
+import pytest
 from pydantic import ValidationError
 
-from src.models.processing_job import ProcessingJob, JobStatus, WorkflowStage
+from src.models.processing_job import JobStatus, ProcessingJob, WorkflowStage
 
 # Valid 64-character idempotency key (SHA256 hex format) for test fixtures
 VALID_IDEMPOTENCY_KEY = "abc123def456abc123def456abc123def456abc123def456abc123def456abcd"
@@ -30,7 +31,7 @@ class TestProcessingJobValidation:
             current_stage=WorkflowStage.RECEIVE,
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert job.job_id == "770e8400-e29b-41d4-a716-446655440000"
         assert job.status == JobStatus.PENDING
         assert job.retry_count == 0
@@ -47,7 +48,7 @@ class TestProcessingJobValidation:
             JobStatus.FAILED,
             JobStatus.SKIPPED
         ]
-        
+
         for status in valid_statuses:
             job = ProcessingJob(
                 job_id="770e8400-e29b-41d4-a716-446655440000",
@@ -59,7 +60,7 @@ class TestProcessingJobValidation:
                 correlation_id="660e8400-e29b-41d4-a716-446655440001"
             )
             assert job.status == status
-        
+
         # Invalid status
         with pytest.raises(ValidationError) as exc_info:
             ProcessingJob(
@@ -84,7 +85,7 @@ class TestProcessingJobValidation:
             WorkflowStage.CREATE_PR,
             WorkflowStage.FINALIZE
         ]
-        
+
         for stage in valid_stages:
             job = ProcessingJob(
                 job_id="770e8400-e29b-41d4-a716-446655440000",
@@ -96,7 +97,7 @@ class TestProcessingJobValidation:
                 correlation_id="660e8400-e29b-41d4-a716-446655440001"
             )
             assert job.current_stage == stage
-        
+
         # Invalid stage
         with pytest.raises(ValidationError) as exc_info:
             ProcessingJob(
@@ -125,7 +126,7 @@ class TestProcessingJobValidation:
                 retry_count=count
             )
             assert job.retry_count == count
-        
+
         # Invalid retry count (exceeds max 3)
         with pytest.raises(ValidationError) as exc_info:
             ProcessingJob(
@@ -151,7 +152,7 @@ class TestProcessingJobValidation:
             current_stage=WorkflowStage.RECEIVE,
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert job.retry_delays == [5, 15, 45]
 
     def test_completed_at_after_started_at(self):
@@ -159,7 +160,7 @@ class TestProcessingJobValidation:
         started_at = datetime.now()
         valid_completed_at = started_at + timedelta(seconds=30)
         invalid_completed_at = started_at - timedelta(seconds=10)
-        
+
         # Valid: completed_at after started_at
         job = ProcessingJob(
             job_id="770e8400-e29b-41d4-a716-446655440000",
@@ -172,7 +173,7 @@ class TestProcessingJobValidation:
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert job.completed_at > job.started_at
-        
+
         # Invalid: completed_at before started_at
         with pytest.raises(ValidationError) as exc_info:
             ProcessingJob(
@@ -203,7 +204,7 @@ class TestProcessingJobValidation:
         )
         assert job.error_message == "AI generation timeout after 120 seconds"
         assert job.error_code == "E302"
-        
+
         # Invalid: FAILED status without error_message
         with pytest.raises(ValidationError) as exc_info:
             ProcessingJob(
@@ -226,7 +227,7 @@ class TestProcessingJobValidation:
         # PROCESSING → COMPLETED
         # PROCESSING → FAILED
         # PENDING → SKIPPED
-        
+
         # PENDING → PROCESSING
         job = ProcessingJob(
             job_id="770e8400-e29b-41d4-a716-446655440000",
@@ -238,7 +239,7 @@ class TestProcessingJobValidation:
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert job.status == JobStatus.PENDING
-        
+
         # Simulate transition to PROCESSING (in real implementation, this would use a method)
         job_processing = ProcessingJob(
             job_id=job.job_id,
@@ -250,7 +251,7 @@ class TestProcessingJobValidation:
             correlation_id=job.correlation_id
         )
         assert job_processing.status == JobStatus.PROCESSING
-        
+
         # PROCESSING → COMPLETED
         job_completed = ProcessingJob(
             job_id=job.job_id,
@@ -263,7 +264,7 @@ class TestProcessingJobValidation:
             correlation_id=job.correlation_id
         )
         assert job_completed.status == JobStatus.COMPLETED
-        
+
         # Invalid transition: COMPLETED → PROCESSING (would require validation in model)
         # This test verifies the model accepts the values, but business logic should prevent this
 
@@ -281,7 +282,7 @@ class TestProcessingJobValidation:
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert len(job.idempotency_key) == 64
-        
+
         # Invalid: Too short for SHA256
         with pytest.raises(ValidationError) as exc_info:
             ProcessingJob(
@@ -306,7 +307,7 @@ class TestProcessingJobValidation:
             current_stage=WorkflowStage.RECEIVE,
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         # Attempt to modify status should fail
         with pytest.raises(ValidationError):
             job.status = JobStatus.COMPLETED
@@ -316,7 +317,7 @@ class TestProcessingJobValidation:
         started_at = datetime.now()
         first_retry = started_at + timedelta(seconds=5)
         second_retry = started_at + timedelta(seconds=20)  # 5 + 15
-        
+
         # First retry
         job_retry1 = ProcessingJob(
             job_id="770e8400-e29b-41d4-a716-446655440000",
@@ -331,7 +332,7 @@ class TestProcessingJobValidation:
         )
         assert job_retry1.retry_count == 1
         assert job_retry1.last_retry_at == first_retry
-        
+
         # Second retry
         job_retry2 = ProcessingJob(
             job_id="770e8400-e29b-41d4-a716-446655440000",

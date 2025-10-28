@@ -1,6 +1,7 @@
 """Unit tests for TestCaseDocument model."""
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.test_case_document import TestCaseDocument
@@ -17,7 +18,7 @@ class TestTestCaseDocumentValidation:
             "ai_model": "llama-3.2-11b",
             "context_sources": [38, 39, 40]
         }
-        
+
         doc = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
             issue_number=42,
@@ -32,7 +33,7 @@ class TestTestCaseDocumentValidation:
             context_sources=[38, 39, 40],
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert doc.document_id == "880e8400-e29b-41d4-a716-446655440000"
         assert doc.issue_number == 42
         assert doc.branch_name == "test-cases/issue-42"
@@ -47,7 +48,7 @@ class TestTestCaseDocumentValidation:
             "ai_model": "llama-3.2-11b",
             "context_sources": [38, 39]
         }
-        
+
         # Valid Markdown with headings, lists, code blocks
         valid_markdown = """# Test Cases: Feature X
 
@@ -76,7 +77,7 @@ Test the authentication feature.
 }
 ```
 """
-        
+
         doc = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
             issue_number=42,
@@ -89,7 +90,7 @@ Test the authentication feature.
             context_sources=[38, 39],
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert "# Test Cases:" in doc.content
         assert "## Overview" in doc.content
         assert "### Scenario 1:" in doc.content
@@ -103,7 +104,7 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": [38, 39, 40]
         }
-        
+
         doc = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
             issue_number=42,
@@ -116,19 +117,19 @@ Test the authentication feature.
             context_sources=[38, 39, 40],
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert "issue" in doc.metadata
         assert "generated_at" in doc.metadata
         assert "ai_model" in doc.metadata
         assert "context_sources" in doc.metadata
-        
+
         # Invalid: Missing required metadata field (issue)
         invalid_metadata = {
             "generated_at": "2025-01-15T10:30:00Z",
             "ai_model": "llama-3.2-11b",
             "context_sources": [38]
         }
-        
+
         with pytest.raises(ValidationError) as exc_info:
             TestCaseDocument(
                 document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -152,7 +153,7 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": []
         }
-        
+
         # Valid branch name
         doc = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -167,7 +168,7 @@ Test the authentication feature.
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert doc.branch_name == "test-cases/issue-42"
-        
+
         # Invalid branch name patterns
         invalid_branches = [
             "issue-42",
@@ -176,7 +177,7 @@ Test the authentication feature.
             "test/issue-42",
             "test-cases/issue-abc"
         ]
-        
+
         for invalid_branch in invalid_branches:
             with pytest.raises(ValidationError) as exc_info:
                 TestCaseDocument(
@@ -201,7 +202,7 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": []
         }
-        
+
         # Valid: pr_url is None (before PR created)
         doc_no_pr = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -218,7 +219,7 @@ Test the authentication feature.
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert doc_no_pr.pr_url is None
-        
+
         # Valid: pr_url is valid GitHub URL
         valid_pr_url = "https://github.com/owner/repo/pull/123"
         doc_with_pr = TestCaseDocument(
@@ -236,7 +237,7 @@ Test the authentication feature.
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert doc_with_pr.pr_url == valid_pr_url
-        
+
         # Invalid: pr_url is not a valid GitHub URL
         invalid_urls = [
             "https://example.com/pull/123",
@@ -244,7 +245,7 @@ Test the authentication feature.
             "https://github.com/pull/123",
             "not-a-url"
         ]
-        
+
         for invalid_url in invalid_urls:
             with pytest.raises(ValidationError) as exc_info:
                 TestCaseDocument(
@@ -271,13 +272,13 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": []
         }
-        
+
         valid_models = [
             "llama-3.2-11b",
             "llama-3.2-90b",
             "llama-3.2-1b"
         ]
-        
+
         for model in valid_models:
             doc = TestCaseDocument(
                 document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -301,7 +302,7 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": [38, 39, 40, 41, 37]
         }
-        
+
         # Valid: List of up to 5 issue numbers (top 5 similar from vector DB)
         doc = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -315,10 +316,10 @@ Test the authentication feature.
             context_sources=[38, 39, 40, 41, 37],
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert len(doc.context_sources) == 5
         assert all(isinstance(issue, int) for issue in doc.context_sources)
-        
+
         # Valid: Empty list (no similar context found)
         doc_no_context = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -342,7 +343,7 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": []
         }
-        
+
         # Valid: Both None (before PR created)
         doc_both_none = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -359,7 +360,7 @@ Test the authentication feature.
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert doc_both_none.pr_number is None and doc_both_none.pr_url is None
-        
+
         # Valid: Both set (after PR created)
         doc_both_set = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
@@ -376,7 +377,7 @@ Test the authentication feature.
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
         assert doc_both_set.pr_number == 123 and doc_both_set.pr_url is not None
-        
+
         # Invalid: pr_number set but pr_url None (inconsistent state)
         with pytest.raises(ValidationError) as exc_info:
             TestCaseDocument(
@@ -403,7 +404,7 @@ Test the authentication feature.
             "ai_model": "llama-3.2-11b",
             "context_sources": []
         }
-        
+
         doc = TestCaseDocument(
             document_id="880e8400-e29b-41d4-a716-446655440000",
             issue_number=42,
@@ -416,7 +417,7 @@ Test the authentication feature.
             context_sources=[],
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         # Attempt to modify content should fail
         with pytest.raises(ValidationError):
             doc.content = "# Modified Test Cases"

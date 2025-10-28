@@ -1,6 +1,7 @@
 """Unit tests for WebhookEvent model."""
-import pytest
 from datetime import datetime
+
+import pytest
 from pydantic import ValidationError
 
 from src.models.webhook_event import WebhookEvent
@@ -23,7 +24,7 @@ class TestWebhookEventValidation:
             received_at=datetime.now(),
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         assert event.event_id == "550e8400-e29b-41d4-a716-446655440000"
         assert event.event_type == "issues.opened"
         assert event.issue_number == 123
@@ -43,16 +44,16 @@ class TestWebhookEventValidation:
             "received_at": datetime.now(),
             "correlation_id": "660e8400-e29b-41d4-a716-446655440001"
         }
-        
+
         # Valid: issues.opened
         event = WebhookEvent(**valid_data)
         assert event.event_type == "issues.opened"
-        
+
         # Valid: issues.labeled
         valid_data["event_type"] = "issues.labeled"
         event = WebhookEvent(**valid_data)
         assert event.event_type == "issues.labeled"
-        
+
         # Invalid: other event type
         with pytest.raises(ValidationError) as exc_info:
             valid_data["event_type"] = "pull_request.opened"
@@ -73,11 +74,11 @@ class TestWebhookEventValidation:
             "received_at": datetime.now(),
             "correlation_id": "660e8400-e29b-41d4-a716-446655440001"
         }
-        
+
         # Should succeed at 256 chars
         event = WebhookEvent(**valid_data)
         assert len(event.issue_title) == 256
-        
+
         # Should fail above 256 chars
         with pytest.raises(ValidationError) as exc_info:
             valid_data["issue_title"] = "x" * 257
@@ -87,7 +88,7 @@ class TestWebhookEventValidation:
     def test_issue_body_truncation(self):
         """Test issue_body is truncated to 5000 characters with warning."""
         long_body = "x" * 6000
-        
+
         event = WebhookEvent(
             event_id="550e8400-e29b-41d4-a716-446655440000",
             event_type="issues.opened",
@@ -100,7 +101,7 @@ class TestWebhookEventValidation:
             received_at=datetime.now(),
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         # Should be truncated to 5000 chars
         assert len(event.issue_body) == 5000
         assert event.issue_body == long_body[:5000]
@@ -119,11 +120,11 @@ class TestWebhookEventValidation:
             "received_at": datetime.now(),
             "correlation_id": "660e8400-e29b-41d4-a716-446655440001"
         }
-        
+
         # Should succeed with generate-tests label
         event = WebhookEvent(**valid_data)
         assert "generate-tests" in event.labels
-        
+
         # Should fail without generate-tests label
         with pytest.raises(ValidationError) as exc_info:
             valid_data["labels"] = ["bug", "enhancement"]
@@ -144,11 +145,11 @@ class TestWebhookEventValidation:
             "received_at": datetime.now(),
             "correlation_id": "660e8400-e29b-41d4-a716-446655440001"
         }
-        
+
         # Valid sha256= prefix
         event = WebhookEvent(**valid_data)
         assert event.signature.startswith("sha256=")
-        
+
         # Invalid format (missing sha256= prefix)
         with pytest.raises(ValidationError) as exc_info:
             valid_data["signature"] = "abcdef1234567890"
@@ -169,11 +170,11 @@ class TestWebhookEventValidation:
             "received_at": datetime.now(),
             "correlation_id": "660e8400-e29b-41d4-a716-446655440001"
         }
-        
+
         # Valid format
         event = WebhookEvent(**valid_data)
         assert "/" in event.repository
-        
+
         # Invalid format (no slash)
         with pytest.raises(ValidationError) as exc_info:
             valid_data["repository"] = "invalid-format"
@@ -194,7 +195,7 @@ class TestWebhookEventValidation:
             received_at=datetime.now(),
             correlation_id="660e8400-e29b-41d4-a716-446655440001"
         )
-        
+
         # Should not allow modification
         with pytest.raises(ValidationError):
             event.issue_number = 456

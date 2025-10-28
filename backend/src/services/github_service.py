@@ -1,14 +1,10 @@
 """GitHubService for GitHub API operations."""
 import asyncio
-from typing import Optional, Dict, Any, List
+from typing import Any
 
 import structlog
 
-from src.core.exceptions import (
-    GitHubAPIError,
-    GitHubBranchExistsError,
-    GitHubRateLimitError
-)
+from src.core.exceptions import GitHubAPIError, GitHubBranchExistsError, GitHubRateLimitError
 
 # Initialize structured logger
 logger = structlog.get_logger(__name__)
@@ -61,10 +57,10 @@ class GitHubService:
 
             log.info("github_create_branch_completed")
 
-        except GitHubBranchExistsError as e:
+        except GitHubBranchExistsError:
             log.warning("github_create_branch_exists")
             raise
-        except GitHubRateLimitError as e:
+        except GitHubRateLimitError:
             log.error("github_create_branch_rate_limit")
             raise
         except GitHubAPIError:
@@ -113,7 +109,7 @@ class GitHubService:
         body: str,
         head_branch: str,
         base_branch: str = "main"
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Create a pull request.
 
         Args:
@@ -172,8 +168,8 @@ class GitHubService:
         issue_number: int,
         branch_name: str,
         title: str,
-        additional_context: Optional[str] = None
-    ) -> Dict[str, Any]:
+        additional_context: str | None = None
+    ) -> dict[str, Any]:
         """Create a pull request that closes an issue.
 
         Args:
@@ -319,7 +315,7 @@ class GitHubService:
         self,
         issue_number: int,
         issue_title: str,
-        context_sources: Optional[List[int]] = None
+        context_sources: list[int] | None = None
     ) -> str:
         """Generate PR body with issue reference and context.
 

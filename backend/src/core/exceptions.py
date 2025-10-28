@@ -1,15 +1,14 @@
 """Custom exceptions for the test case generation system."""
-from typing import Optional
 
 
 class TestCaseGeneratorException(Exception):
     """Base exception for all application errors."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         error_code: str,
-        details: Optional[dict] = None
+        details: dict | None = None
     ):
         """Initialize exception.
         
@@ -27,10 +26,10 @@ class TestCaseGeneratorException(Exception):
 
 class InvalidWebhookSignatureError(TestCaseGeneratorException):
     """E101: Webhook signature validation failed."""
-    
+
     def __init__(self, expected: str, received: str):
         super().__init__(
-            message=f"Webhook signature validation failed",
+            message="Webhook signature validation failed",
             error_code="E101",
             details={"expected": expected[:10] + "...", "received": received[:10] + "..."}
         )
@@ -38,7 +37,7 @@ class InvalidWebhookSignatureError(TestCaseGeneratorException):
 
 class InvalidWebhookPayloadError(TestCaseGeneratorException):
     """E102/E103: Invalid webhook payload structure or missing required fields."""
-    
+
     def __init__(self, message: str, error_code: str = "E102"):
         super().__init__(
             message=message,
@@ -49,7 +48,7 @@ class InvalidWebhookPayloadError(TestCaseGeneratorException):
 
 class MissingRequiredTagError(TestCaseGeneratorException):
     """E102: Issue does not contain 'generate-tests' tag."""
-    
+
     def __init__(self, issue_number: int):
         super().__init__(
             message=f"Issue #{issue_number} missing 'generate-tests' tag",
@@ -60,7 +59,7 @@ class MissingRequiredTagError(TestCaseGeneratorException):
 
 class InsufficientInformationError(TestCaseGeneratorException):
     """E104: Issue lacks sufficient detail for generation."""
-    
+
     def __init__(self, issue_number: int, reason: str):
         super().__init__(
             message=f"Issue #{issue_number} has insufficient information: {reason}",
@@ -71,10 +70,10 @@ class InsufficientInformationError(TestCaseGeneratorException):
 
 class DuplicateWebhookError(TestCaseGeneratorException):
     """E104: Duplicate webhook detected (idempotency)."""
-    
+
     def __init__(self, idempotency_key: str):
         super().__init__(
-            message=f"Duplicate webhook detected",
+            message="Duplicate webhook detected",
             error_code="E104",
             details={"idempotency_key": idempotency_key}
         )
@@ -84,8 +83,8 @@ class DuplicateWebhookError(TestCaseGeneratorException):
 
 class VectorDatabaseError(TestCaseGeneratorException):
     """E201: Generic vector database error."""
-    
-    def __init__(self, message: str, details: Optional[dict] = None):
+
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(
             message=f"Vector database error: {message}",
             error_code="E201",
@@ -95,8 +94,8 @@ class VectorDatabaseError(TestCaseGeneratorException):
 
 class VectorDBQueryError(TestCaseGeneratorException):
     """E201: Vector database query failed."""
-    
-    def __init__(self, message: str, details: Optional[dict] = None):
+
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(
             message=f"Vector DB query failed: {message}",
             error_code="E201",
@@ -108,8 +107,8 @@ class VectorDBQueryError(TestCaseGeneratorException):
 
 class AIGenerationError(TestCaseGeneratorException):
     """E301: Generic AI generation error."""
-    
-    def __init__(self, message: str, details: Optional[dict] = None):
+
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(
             message=f"AI generation failed: {message}",
             error_code="E301",
@@ -119,7 +118,7 @@ class AIGenerationError(TestCaseGeneratorException):
 
 class AITimeoutError(TestCaseGeneratorException):
     """E302: AI generation timeout."""
-    
+
     def __init__(self, timeout_seconds: int):
         super().__init__(
             message=f"AI generation timed out after {timeout_seconds}s",
@@ -130,7 +129,7 @@ class AITimeoutError(TestCaseGeneratorException):
 
 class InvalidOutputFormatError(TestCaseGeneratorException):
     """E303: AI output does not match expected format."""
-    
+
     def __init__(self, reason: str):
         super().__init__(
             message=f"AI output format invalid: {reason}",
@@ -143,8 +142,8 @@ class InvalidOutputFormatError(TestCaseGeneratorException):
 
 class GitHubAPIError(TestCaseGeneratorException):
     """E406: Generic GitHub API error."""
-    
-    def __init__(self, message: str, details: Optional[dict] = None):
+
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(
             message=f"GitHub API error: {message}",
             error_code="E406",
@@ -154,7 +153,7 @@ class GitHubAPIError(TestCaseGeneratorException):
 
 class BranchAlreadyExistsError(TestCaseGeneratorException):
     """E402: Branch already exists."""
-    
+
     def __init__(self, branch_name: str):
         super().__init__(
             message=f"Branch '{branch_name}' already exists",
@@ -169,8 +168,8 @@ GitHubBranchExistsError = BranchAlreadyExistsError
 
 class GitHubRateLimitError(TestCaseGeneratorException):
     """E405: GitHub API rate limit exceeded."""
-    
-    def __init__(self, message: str, details: Optional[dict] = None):
+
+    def __init__(self, message: str, details: dict | None = None):
         super().__init__(
             message=f"GitHub API rate limit exceeded: {message}",
             error_code="E405",
@@ -182,7 +181,7 @@ class GitHubRateLimitError(TestCaseGeneratorException):
 
 class DatabaseConnectionError(TestCaseGeneratorException):
     """E501: Database connection failed."""
-    
+
     def __init__(self, service: str, reason: str):
         super().__init__(
             message=f"{service} connection failed: {reason}",
@@ -193,7 +192,7 @@ class DatabaseConnectionError(TestCaseGeneratorException):
 
 class ConfigurationError(TestCaseGeneratorException):
     """E502: Invalid configuration."""
-    
+
     def __init__(self, field: str, reason: str):
         super().__init__(
             message=f"Configuration error for '{field}': {reason}",

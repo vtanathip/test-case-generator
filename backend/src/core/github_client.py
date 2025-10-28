@@ -1,7 +1,7 @@
 """GitHub client wrapper using PyGithub."""
-from github import Github, GithubException, Auth
-from typing import Optional
+
 import structlog
+from github import Auth, Github, GithubException
 
 logger = structlog.get_logger()
 

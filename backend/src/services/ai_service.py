@@ -1,18 +1,18 @@
 """AIService with 6-stage LangGraph workflow for test case generation."""
 import asyncio
-from datetime import datetime
-from typing import Any, Dict, List, Optional, TypedDict, Annotated
-from uuid import uuid4
-from pydantic import BaseModel
 import operator
+from datetime import datetime
+from typing import Annotated, Any, TypedDict
+from uuid import uuid4
 
 import structlog
-from langgraph.graph import StateGraph, END
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
+from langgraph.graph import END, StateGraph
+from pydantic import BaseModel
 
-from src.models.processing_job import ProcessingJob, JobStatus, WorkflowStage
-from src.models.test_case_document import TestCaseDocument
 from src.core.exceptions import AIGenerationError, AITimeoutError, VectorDBQueryError
+from src.models.processing_job import JobStatus, ProcessingJob, WorkflowStage
+from src.models.test_case_document import TestCaseDocument
 from src.services.ai_prompt_template import PromptTemplate
 
 # Initialize structured logger
@@ -32,11 +32,11 @@ class WorkflowState(TypedDict):
     """
     job: ProcessingJob
     webhook_event: Any
-    context: Optional[List[Dict[str, Any]]]
-    test_document: Optional[TestCaseDocument]
-    error: Optional[str]
+    context: list[dict[str, Any]] | None
+    test_document: TestCaseDocument | None
+    error: str | None
     # Use operator.add to append messages instead of replacing
-    messages: Annotated[List[BaseMessage], operator.add]
+    messages: Annotated[list[BaseMessage], operator.add]
 
 
 class AIService:
@@ -267,7 +267,7 @@ class AIService:
                 content_length=len(content)
             )
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             generation_duration = (
                 datetime.now() - generation_start).total_seconds()
             error_msg = f"AI generation timeout after {self.timeout}s"
@@ -526,7 +526,7 @@ class AIService:
         self,
         job: ProcessingJob,
         webhook_event: Any
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Stage 2 (RETRIEVE): Query vector DB for top 5 similar test cases.
 
         Args:
@@ -576,7 +576,7 @@ class AIService:
         self,
         job: ProcessingJob,
         webhook_event: Any,
-        context: List[Dict[str, Any]]
+        context: list[dict[str, Any]]
     ) -> TestCaseDocument:
         """Stage 3 (GENERATE): AI generates test cases using LLM.
 
@@ -608,7 +608,7 @@ class AIService:
                 content = await self.llm_client.generate(
                     prompt=prompt
                 )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             raise AITimeoutError(timeout_seconds=self.timeout)
         except Exception as e:
             raise AIGenerationError(
@@ -879,8 +879,8 @@ class AIService:
         self,
         job: ProcessingJob,
         webhook_event: Any,
-        context: List[Dict[str, Any]],
-        max_retries: Optional[int] = None
+        context: list[dict[str, Any]],
+        max_retries: int | None = None
     ) -> TestCaseDocument:
         """Generate test cases with retry logic (exponential backoff).
 
@@ -897,7 +897,7 @@ class AIService:
             AIGenerationError: If all retries exhausted
         """
         retries = max_retries if max_retries is not None else self.max_retries
-        last_error: Optional[AIGenerationError] = None
+        last_error: AIGenerationError | None = None
 
         for attempt in range(retries):
             try:
@@ -936,8 +936,8 @@ class AIService:
 
     def render_prompt(
         self,
-        issue: Dict[str, Any],
-        context: List[Dict[str, Any]]
+        issue: dict[str, Any],
+        context: list[dict[str, Any]]
     ) -> str:
         """Render prompt template with issue and context data using Jinja2.
 

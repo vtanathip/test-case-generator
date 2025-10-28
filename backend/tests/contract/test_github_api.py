@@ -1,8 +1,7 @@
 """Contract tests for GitHub API interactions."""
+from unittest.mock import Mock
+
 import pytest
-import json
-from unittest.mock import Mock, patch
-from pydantic import BaseModel, ValidationError
 
 from src.core.github_client import GitHubClient
 
@@ -16,7 +15,7 @@ class TestGitHubAPIContracts:
         mock_config = Mock()
         mock_config.GITHUB_TOKEN = "test_token"
         mock_config.GITHUB_REPO = "owner/repo"
-        
+
         return GitHubClient(config=mock_config)
 
     @pytest.mark.contract
@@ -60,7 +59,7 @@ class TestGitHubAPIContracts:
                 "id": 2222
             }
         }
-        
+
         # Validate required fields exist
         assert "action" in webhook_payload
         assert webhook_payload["action"] == "opened"
@@ -94,7 +93,7 @@ class TestGitHubAPIContracts:
                 "full_name": "owner/repo"
             }
         }
-        
+
         # Validate required fields
         assert webhook_payload["action"] == "labeled"
         assert "label" in webhook_payload
@@ -110,12 +109,12 @@ class TestGitHubAPIContracts:
             "base": "main",
             "draft": False
         }
-        
+
         # Validate required fields for GitHub PR creation
         required_fields = ["title", "body", "head", "base"]
         for field in required_fields:
             assert field in pr_request, f"Missing required field: {field}"
-        
+
         # Validate types
         assert isinstance(pr_request["title"], str)
         assert isinstance(pr_request["body"], str)
@@ -150,13 +149,13 @@ class TestGitHubAPIContracts:
             "mergeable": True,
             "mergeable_state": "clean"
         }
-        
+
         # Validate required response fields
         assert "number" in pr_response
         assert "html_url" in pr_response
         assert "state" in pr_response
         assert pr_response["state"] in ["open", "closed", "merged"]
-        
+
         # Validate URL format
         assert pr_response["html_url"].startswith("https://github.com/")
         assert "/pull/" in pr_response["html_url"]
@@ -169,7 +168,7 @@ class TestGitHubAPIContracts:
             "ref": "refs/heads/test-cases/issue-42",
             "sha": "abc123def456"  # SHA of commit to branch from
         }
-        
+
         # Validate required fields
         assert "ref" in branch_request
         assert "sha" in branch_request
@@ -183,11 +182,11 @@ class TestGitHubAPIContracts:
             "content": "IyBUZXN0IENhc2VzCgpDb250ZW50",  # Base64 encoded
             "branch": "test-cases/issue-42"
         }
-        
+
         # Validate required fields for GitHub file creation
         assert "message" in file_request  # Commit message
         assert "content" in file_request  # Base64 encoded content
-        
+
         # Validate content is base64
         import base64
         try:
@@ -201,7 +200,7 @@ class TestGitHubAPIContracts:
         comment_request = {
             "body": "✅ Test cases generated! View PR: https://github.com/owner/repo/pull/123"
         }
-        
+
         # Validate required fields
         assert "body" in comment_request
         assert isinstance(comment_request["body"], str)
@@ -221,7 +220,7 @@ class TestGitHubAPIContracts:
             "updated_at": "2025-01-15T10:40:00Z",
             "html_url": "https://github.com/owner/repo/issues/42#issuecomment-987654321"
         }
-        
+
         # Validate response fields
         assert "id" in comment_response
         assert "body" in comment_response
@@ -245,7 +244,7 @@ class TestGitHubAPIContracts:
                 "pull": True
             }
         }
-        
+
         # Validate required fields
         assert "full_name" in repo_response
         assert "default_branch" in repo_response
@@ -276,7 +275,7 @@ class TestGitHubAPIContracts:
                 "used": 1
             }
         }
-        
+
         # Validate rate limit fields
         assert "rate" in rate_limit_response
         assert "limit" in rate_limit_response["rate"]
@@ -291,7 +290,7 @@ class TestGitHubAPIContracts:
             "documentation_url": "https://docs.github.com/rest/reference/repos#get-a-repository",
             "status": "404"
         }
-        
+
         # Validate error response structure
         assert "message" in error_response
         assert isinstance(error_response["message"], str)
@@ -310,12 +309,12 @@ class TestGitHubAPIContracts:
             ],
             "documentation_url": "https://docs.github.com/rest/pulls/pulls#create-a-pull-request"
         }
-        
+
         # Validate validation error structure
         assert "message" in validation_error_response
         assert "errors" in validation_error_response
         assert isinstance(validation_error_response["errors"], list)
-        
+
         if len(validation_error_response["errors"]) > 0:
             error = validation_error_response["errors"][0]
             assert "resource" in error
@@ -333,7 +332,7 @@ class TestGitHubAPIContracts:
             "Content-Type": "application/json",
             "User-Agent": "GitHub-Hookshot/abc123"
         }
-        
+
         # Validate required webhook headers
         assert "X-GitHub-Event" in webhook_headers
         assert "X-Hub-Signature-256" in webhook_headers
@@ -351,12 +350,12 @@ class TestGitHubAPIContracts:
             "default": False,
             "description": "Automatically generate test cases"
         }
-        
+
         # Validate label fields
         assert "id" in label
         assert "name" in label
         assert "color" in label
-        
+
         # Validate color is hex format
         assert len(label["color"]) == 6
         assert all(c in "0123456789ABCDEFabcdef" for c in label["color"])
@@ -379,7 +378,7 @@ class TestGitHubAPIContracts:
             },
             "restrictions": None
         }
-        
+
         # Validate protection fields (may be None if not protected)
         if protection_response is not None:
             assert "required_status_checks" in protection_response or \

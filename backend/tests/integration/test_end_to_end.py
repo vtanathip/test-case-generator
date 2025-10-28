@@ -1,15 +1,15 @@
 """Integration tests for end-to-end webhook → AI → PR workflow."""
-import pytest
 import asyncio
-import json
-import hmac
 import hashlib
-from datetime import datetime, timedelta
-from unittest.mock import Mock, AsyncMock, patch
+import hmac
+import json
+from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from src.main import create_app
-from src.models.processing_job import JobStatus, WorkflowStage
-from src.core.exceptions import DuplicateWebhookError
+from src.models.processing_job import JobStatus
 
 
 class TestEndToEndWorkflow:
@@ -18,11 +18,12 @@ class TestEndToEndWorkflow:
     @pytest.fixture
     async def app(self):
         """Fixture for FastAPI app instance with initialized state."""
-        from unittest.mock import Mock, AsyncMock
-        from src.services.webhook_service import WebhookService
+        from unittest.mock import AsyncMock
+
+        from src.core.config import settings
         from src.services.ai_service import AIService
         from src.services.github_service import GitHubService
-        from src.core.config import settings
+        from src.services.webhook_service import WebhookService
 
         app = create_app()
 
@@ -74,7 +75,7 @@ class TestEndToEndWorkflow:
     @pytest.fixture
     async def test_client(self, app):
         """Fixture for async HTTP test client."""
-        from httpx import AsyncClient, ASGITransport
+        from httpx import ASGITransport, AsyncClient
 
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             yield client
@@ -425,7 +426,7 @@ class TestEndToEndWorkflow:
             call_count += 1
             if call_count < 3:
                 await asyncio.sleep(0.1)
-                raise asyncio.TimeoutError("AI timeout")
+                raise TimeoutError("AI timeout")
             return "# Test Cases"
 
         mock_llm.generate = mock_generate_with_retries

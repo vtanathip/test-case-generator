@@ -1,22 +1,21 @@
 """GitHub webhook endpoint for test case generation."""
-import asyncio
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 from uuid import uuid4
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Request, Header, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-from src.models.webhook_event import WebhookEvent
-from src.models.processing_job import ProcessingJob, JobStatus, WorkflowStage
-from src.services.webhook_service import WebhookService
-from src.services.ai_service import AIService
 from src.core.exceptions import (
-    InvalidWebhookSignatureError,
+    DuplicateWebhookError,
     InvalidWebhookPayloadError,
-    DuplicateWebhookError
+    InvalidWebhookSignatureError,
 )
+from src.models.processing_job import JobStatus, ProcessingJob, WorkflowStage
+from src.models.webhook_event import WebhookEvent
+from src.services.ai_service import AIService
+from src.services.webhook_service import WebhookService
 
 # Initialize structured logger
 logger = structlog.get_logger(__name__)
@@ -290,7 +289,7 @@ async def github_webhook(
     summary="Webhook Health Check",
     description="Check if webhook endpoint is healthy"
 )
-async def webhook_health() -> Dict[str, Any]:
+async def webhook_health() -> dict[str, Any]:
     """Health check for webhook endpoint.
 
     Returns:

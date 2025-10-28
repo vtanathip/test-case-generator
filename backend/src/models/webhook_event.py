@@ -1,7 +1,8 @@
 """WebhookEvent pydantic model."""
 from datetime import datetime
 from typing import Literal
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class WebhookEvent(BaseModel):
@@ -20,9 +21,9 @@ class WebhookEvent(BaseModel):
         received_at: Timestamp when webhook was received
         correlation_id: Correlation ID for tracking (UUID)
     """
-    
+
     model_config = ConfigDict(frozen=True)  # Immutable model
-    
+
     event_id: str = Field(..., description="Unique event identifier (UUID)")
     event_type: Literal["issues.opened", "issues.labeled"] = Field(
         ...,
@@ -43,7 +44,7 @@ class WebhookEvent(BaseModel):
     signature: str = Field(..., description="HMAC-SHA256 signature")
     received_at: datetime = Field(..., description="Webhook received timestamp")
     correlation_id: str = Field(..., description="Correlation ID (UUID)")
-    
+
     @field_validator("issue_body")
     @classmethod
     def truncate_issue_body(cls, v: str) -> str:
@@ -51,7 +52,7 @@ class WebhookEvent(BaseModel):
         if len(v) > 5000:
             return v[:5000]
         return v
-    
+
     @field_validator("labels")
     @classmethod
     def validate_labels_contain_generate_tests(cls, v: list[str]) -> list[str]:
@@ -61,7 +62,7 @@ class WebhookEvent(BaseModel):
                 "Labels must contain 'generate-tests' tag (FR-002)"
             )
         return v
-    
+
     @field_validator("signature")
     @classmethod
     def validate_signature_format(cls, v: str) -> str:
@@ -71,7 +72,7 @@ class WebhookEvent(BaseModel):
                 "Signature must have 'sha256=' prefix for HMAC-SHA256 validation"
             )
         return v
-    
+
     @field_validator("repository")
     @classmethod
     def validate_repository_format(cls, v: str) -> str:

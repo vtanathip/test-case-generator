@@ -1,7 +1,7 @@
 """Structured logging configuration using structlog."""
 import logging
 import sys
-from typing import Any
+
 import structlog
 from structlog.types import FilteringBoundLogger
 

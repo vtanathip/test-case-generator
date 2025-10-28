@@ -7,9 +7,9 @@ test cases from GitHub issues. The template includes:
 - Structured Markdown output format
 - Few-shot examples for better quality
 """
-from typing import Dict, List, Any
-from jinja2 import Template
+from typing import Any
 
+from jinja2 import Template
 
 # Main prompt template for test case generation
 TEST_CASE_GENERATION_TEMPLATE = """You are an expert software testing engineer. Your task is to generate comprehensive test cases based on a GitHub issue.
@@ -131,15 +131,15 @@ Now generate the test cases:
 
 class PromptTemplate:
     """Wrapper class for test case generation prompt template."""
-    
+
     def __init__(self):
         """Initialize the Jinja2 template."""
         self.template = Template(TEST_CASE_GENERATION_TEMPLATE)
-    
+
     def render(
         self,
-        issue: Dict[str, Any],
-        context: List[Dict[str, Any]] = None
+        issue: dict[str, Any],
+        context: list[dict[str, Any]] = None
     ) -> str:
         """Render the prompt template with issue and context data.
         
@@ -171,19 +171,19 @@ class PromptTemplate:
         """
         if context is None:
             context = []
-        
+
         return self.template.render(
             issue=issue,
             context=context
         )
-    
+
     def render_with_metadata(
         self,
-        issue: Dict[str, Any],
-        context: List[Dict[str, Any]] = None,
+        issue: dict[str, Any],
+        context: list[dict[str, Any]] = None,
         repository: str = None,
-        labels: List[str] = None
-    ) -> Dict[str, Any]:
+        labels: list[str] = None
+    ) -> dict[str, Any]:
         """Render prompt and return with metadata.
         
         Args:
@@ -196,7 +196,7 @@ class PromptTemplate:
             Dictionary with 'prompt' and 'metadata' keys
         """
         prompt = self.render(issue, context)
-        
+
         metadata = {
             "issue_number": issue.get("number"),
             "repository": repository,
@@ -204,7 +204,7 @@ class PromptTemplate:
             "context_count": len(context) if context else 0,
             "context_sources": [doc.get("issue_number") for doc in (context or [])]
         }
-        
+
         return {
             "prompt": prompt,
             "metadata": metadata

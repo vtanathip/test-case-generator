@@ -1,8 +1,8 @@
 """ProcessingJob pydantic model."""
 from datetime import datetime
 from enum import Enum
-from typing import Optional
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class JobStatus(str, Enum):
@@ -43,19 +43,19 @@ class ProcessingJob(BaseModel):
         current_stage: Current workflow stage
         correlation_id: Shared correlation ID (UUID)
     """
-    
+
     model_config = ConfigDict(frozen=True)  # Immutable model
-    
+
     job_id: str = Field(..., description="Unique job identifier (UUID)")
     webhook_event_id: str = Field(..., description="Triggering webhook event ID")
     status: JobStatus = Field(..., description="Current job status")
     started_at: datetime = Field(..., description="Job start timestamp")
-    completed_at: Optional[datetime] = Field(
+    completed_at: datetime | None = Field(
         None,
         description="Job completion timestamp"
     )
-    error_message: Optional[str] = Field(None, description="Error details if failed")
-    error_code: Optional[str] = Field(None, description="Error code (E1xx-E5xx)")
+    error_message: str | None = Field(None, description="Error details if failed")
+    error_code: str | None = Field(None, description="Error code (E1xx-E5xx)")
     retry_count: int = Field(
         default=0,
         ge=0,
@@ -66,7 +66,7 @@ class ProcessingJob(BaseModel):
         default=[5, 15, 45],
         description="Exponential backoff delays (seconds)"
     )
-    last_retry_at: Optional[datetime] = Field(
+    last_retry_at: datetime | None = Field(
         None,
         description="Most recent retry timestamp"
     )
@@ -78,14 +78,14 @@ class ProcessingJob(BaseModel):
     )
     current_stage: WorkflowStage = Field(..., description="Current workflow stage")
     correlation_id: str = Field(..., description="Correlation ID (UUID)")
-    
+
     @field_validator("completed_at")
     @classmethod
     def validate_completed_at_after_started_at(
         cls,
-        v: Optional[datetime],
+        v: datetime | None,
         info
-    ) -> Optional[datetime]:
+    ) -> datetime | None:
         """Validate completed_at is after started_at."""
         if v is not None:
             started_at = info.data.get("started_at")
@@ -94,14 +94,14 @@ class ProcessingJob(BaseModel):
                     "completed_at must be after started_at"
                 )
         return v
-    
+
     @field_validator("error_message")
     @classmethod
     def validate_error_message_for_failed_status(
         cls,
-        v: Optional[str],
+        v: str | None,
         info
-    ) -> Optional[str]:
+    ) -> str | None:
         """Validate error_message is provided when status is FAILED."""
         status = info.data.get("status")
         if status == JobStatus.FAILED and not v:

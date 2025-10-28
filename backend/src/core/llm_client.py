@@ -1,6 +1,8 @@
 """Ollama client for Llama 3.2 inference."""
+from collections.abc import AsyncGenerator
+from typing import Any
+
 import httpx
-from typing import Optional, Dict, Any, AsyncGenerator
 import structlog
 
 logger = structlog.get_logger()
@@ -20,7 +22,7 @@ class LLMClient:
         self.host = host.rstrip("/")
         self.model = model
         self.timeout = timeout
-        self.client: Optional[httpx.AsyncClient] = None
+        self.client: httpx.AsyncClient | None = None
         logger.info("llm_client_initialized", host=host, model=model, timeout=timeout)
 
     async def connect(self) -> None:
@@ -42,11 +44,11 @@ class LLMClient:
             logger.info("llm_client_disconnected")
 
     async def generate(
-        self, 
-        prompt: str, 
-        system: Optional[str] = None,
+        self,
+        prompt: str,
+        system: str | None = None,
         temperature: float = 0.7,
-        max_tokens: Optional[int] = None
+        max_tokens: int | None = None
     ) -> str:
         """Generate completion from prompt.
         
@@ -62,7 +64,7 @@ class LLMClient:
         if not self.client:
             raise RuntimeError("LLM client not connected")
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
             "stream": False,
@@ -70,10 +72,10 @@ class LLMClient:
                 "temperature": temperature,
             }
         }
-        
+
         if system:
             payload["system"] = system
-        
+
         if max_tokens:
             payload["options"]["num_predict"] = max_tokens
 
@@ -84,7 +86,7 @@ class LLMClient:
             )
             response.raise_for_status()
             result = response.json()
-            
+
             generated_text = result.get("response", "")
             logger.info(
                 "llm_generated",
@@ -94,7 +96,7 @@ class LLMClient:
                 done=result.get("done", False)
             )
             return generated_text
-            
+
         except httpx.TimeoutException as e:
             logger.error("llm_timeout", model=self.model, timeout=self.timeout)
             raise TimeoutError(f"LLM generation timeout after {self.timeout}s") from e
@@ -103,9 +105,9 @@ class LLMClient:
             raise
 
     async def generate_stream(
-        self, 
-        prompt: str, 
-        system: Optional[str] = None,
+        self,
+        prompt: str,
+        system: str | None = None,
         temperature: float = 0.7
     ) -> AsyncGenerator[str, None]:
         """Generate completion with streaming.
@@ -121,7 +123,7 @@ class LLMClient:
         if not self.client:
             raise RuntimeError("LLM client not connected")
 
-        payload: Dict[str, Any] = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "prompt": prompt,
             "stream": True,
@@ -129,7 +131,7 @@ class LLMClient:
                 "temperature": temperature,
             }
         }
-        
+
         if system:
             payload["system"] = system
 
@@ -146,7 +148,7 @@ class LLMClient:
                         chunk = json.loads(line)
                         if "response" in chunk:
                             yield chunk["response"]
-                            
+
         except Exception as e:
             logger.error("llm_streaming_failed", error=str(e))
             raise
