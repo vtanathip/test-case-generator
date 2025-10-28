@@ -11,7 +11,7 @@ class GitHubClient:
 
     def __init__(self, token: str, timeout: int = 30):
         """Initialize GitHub client.
-        
+
         Args:
             token: GitHub personal access token
             timeout: Request timeout in seconds
@@ -23,31 +23,33 @@ class GitHubClient:
 
     def get_repo(self, repo_full_name: str):
         """Get repository object with caching.
-        
+
         Args:
             repo_full_name: Repository in format owner/repo
-            
+
         Returns:
             PyGithub Repository object
         """
         if repo_full_name not in self.repo_cache:
             try:
-                self.repo_cache[repo_full_name] = self.client.get_repo(repo_full_name)
+                self.repo_cache[repo_full_name] = self.client.get_repo(
+                    repo_full_name)
                 logger.info("github_repo_cached", repo=repo_full_name)
             except GithubException as e:
-                logger.error("github_repo_error", repo=repo_full_name, error=str(e))
+                logger.error("github_repo_error",
+                             repo=repo_full_name, error=str(e))
                 raise
-        
+
         return self.repo_cache[repo_full_name]
 
     def create_branch(self, repo_full_name: str, branch_name: str, base_sha: str) -> bool:
         """Create new branch from base SHA.
-        
+
         Args:
             repo_full_name: Repository in format owner/repo
             branch_name: New branch name
             base_sha: Base commit SHA
-            
+
         Returns:
             True if created successfully
         """
@@ -55,7 +57,8 @@ class GitHubClient:
             repo = self.get_repo(repo_full_name)
             ref = f"refs/heads/{branch_name}"
             repo.create_git_ref(ref=ref, sha=base_sha)
-            logger.info("github_branch_created", repo=repo_full_name, branch=branch_name)
+            logger.info("github_branch_created",
+                        repo=repo_full_name, branch=branch_name)
             return True
         except GithubException as e:
             if e.status == 422:  # Branch already exists
@@ -73,20 +76,20 @@ class GitHubClient:
         branch: str
     ) -> str:
         """Create or update file in repository.
-        
+
         Args:
             repo_full_name: Repository in format owner/repo
             file_path: File path in repository
             content: File content
             commit_message: Commit message
             branch: Branch name
-            
+
         Returns:
             Commit SHA
         """
         try:
             repo = self.get_repo(repo_full_name)
-            
+
             # Try to get existing file
             try:
                 existing_file = repo.get_contents(file_path, ref=branch)
@@ -97,7 +100,8 @@ class GitHubClient:
                     sha=existing_file.sha,
                     branch=branch
                 )
-                logger.info("github_file_updated", file=file_path, branch=branch)
+                logger.info("github_file_updated",
+                            file=file_path, branch=branch)
             except GithubException:
                 # File doesn't exist, create it
                 result = repo.create_file(
@@ -106,10 +110,11 @@ class GitHubClient:
                     content=content,
                     branch=branch
                 )
-                logger.info("github_file_created", file=file_path, branch=branch)
-            
+                logger.info("github_file_created",
+                            file=file_path, branch=branch)
+
             return result["commit"].sha
-            
+
         except GithubException as e:
             logger.error("github_file_error", error=str(e))
             raise
@@ -121,18 +126,18 @@ class GitHubClient:
         body: str,
         head: str,
         base: str = "main"
-    ) -> int:
+    ) -> dict:
         """Create pull request.
-        
+
         Args:
             repo_full_name: Repository in format owner/repo
             title: PR title
             body: PR description
             head: Head branch name
             base: Base branch name
-            
+
         Returns:
-            Pull request number
+            Dict with PR number and html_url
         """
         try:
             repo = self.get_repo(repo_full_name)
@@ -142,8 +147,9 @@ class GitHubClient:
                 head=head,
                 base=base
             )
-            logger.info("github_pr_created", repo=repo_full_name, pr_number=pr.number)
-            return pr.number
+            logger.info("github_pr_created",
+                        repo=repo_full_name, pr_number=pr.number)
+            return {"number": pr.number, "html_url": pr.html_url}
         except GithubException as e:
             logger.error("github_pr_error", error=str(e))
             raise
@@ -155,7 +161,7 @@ class GitHubClient:
         comment: str
     ) -> None:
         """Add comment to issue.
-        
+
         Args:
             repo_full_name: Repository in format owner/repo
             issue_number: Issue number

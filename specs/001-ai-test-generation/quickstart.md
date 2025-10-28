@@ -28,19 +28,39 @@ cp .env.example .env
 # Required variables:
 #   GITHUB_TOKEN=ghp_xxx           # GitHub personal access token
 #   GITHUB_WEBHOOK_SECRET=xxx      # Webhook secret (you'll create this)
-#   LLAMA_MODEL=llama3.2:11b       # Llama model variant (11b or 90b)
-#   OLLAMA_HOST=ollama             # Ollama server hostname
+#   LLAMA_MODEL=llama3.2:latest    # Llama model variant (3b or latest)
+#   OLLAMA_HOST=http://localhost:11434  # Local Ollama server
 #   CLOUDFLARE_TUNNEL_TOKEN=xxx    # Cloudflare tunnel token
 ```
 
-### 2. Start Services
+### 2. Install and Start Ollama Locally
 
 ```bash
-# Start all services (backend, frontend, ChromaDB, Redis, Ollama)
-docker-compose up -d
+# Windows: Download and install from https://ollama.ai/download
+# Or use winget:
+winget install Ollama.Ollama
 
-# Pull Llama 3.2 model (first time only, may take 5-10 minutes)
-docker-compose exec ollama ollama pull llama3.2:11b
+# macOS:
+brew install ollama
+
+# Linux:
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Start Ollama service (runs on port 11434)
+ollama serve
+
+# In a new terminal, pull Llama 3.2 model (~2GB)
+ollama pull llama3.2:latest
+
+# Verify model is available
+ollama list
+```
+
+### 3. Start Docker Services
+
+```bash
+# Start all services (backend, frontend, ChromaDB, Redis)
+docker-compose up -d
 
 # Check service health
 docker-compose ps
@@ -49,7 +69,7 @@ docker-compose ps
 docker-compose logs -f backend
 ```
 
-### 3. Configure GitHub Webhook
+### 4. Configure GitHub Webhook
 
 1. Go to your GitHub repository → Settings → Webhooks → Add webhook
 2. **Payload URL**: `https://your-tunnel-domain.trycloudflare.com/webhooks/github`
@@ -59,7 +79,7 @@ docker-compose logs -f backend
 6. **Active**: Check the box
 7. Save webhook
 
-### 4. Create Test Issue
+### 5. Create Test Issue
 
 ```bash
 # In your GitHub repository, create a new issue:
@@ -72,7 +92,7 @@ docker-compose logs -f backend
 # - New PR should appear in your repository
 ```
 
-### 5. Access Dashboard
+### 6. Access Dashboard
 
 Open browser to `http://localhost:3000`
 
@@ -95,9 +115,9 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxxx          # Repo access token with write permissio
 GITHUB_WEBHOOK_SECRET=your_secret_here  # Webhook signature secret (random string)
 GITHUB_REPO=owner/repo                  # Repository full name
 
-# Llama 3.2 Configuration
-LLAMA_MODEL=llama3.2:11b                # Model variant (3b, 11b, or 90b)
-OLLAMA_HOST=ollama                      # Ollama hostname (docker service name)
+# Llama 3.2 Configuration (Local Ollama)
+LLAMA_MODEL=llama3.2:latest             # Model variant (3b or latest)
+OLLAMA_HOST=http://localhost:11434      # Local Ollama server
 OLLAMA_PORT=11434                       # Ollama API port
 OLLAMA_GPU_LAYERS=33                    # Number of layers to offload to GPU (-1 for all)
 

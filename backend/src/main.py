@@ -71,6 +71,7 @@ async def lifespan(app: FastAPI):
         app.state.embedding_service = EmbeddingService(
             model_name=settings.chromadb_embedding_model
         )
+        app.state.embedding_service.load_model()
         logger.info("embedding_service_ready")
 
     except Exception as e:

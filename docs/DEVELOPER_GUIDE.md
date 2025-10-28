@@ -123,9 +123,9 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxxx          # Personal access token (repo scope)
 GITHUB_WEBHOOK_SECRET=your_secret_here  # Random 32-char string
 GITHUB_REPO=owner/repo                  # Repository full name
 
-# Llama 3.2 Configuration
-LLAMA_MODEL=llama3.2:11b                # Model variant (3b, 11b, or 90b)
-OLLAMA_HOST=ollama                      # Ollama hostname (docker service)
+# Llama 3.2 Configuration (Local Ollama)
+LLAMA_MODEL=llama3.2:latest             # Model variant (3b or latest)
+OLLAMA_HOST=http://localhost:11434      # Local Ollama server
 
 # Vector Database (ChromaDB)
 CHROMADB_HOST=chromadb                  # ChromaDB hostname
@@ -171,14 +171,13 @@ STRUCTURED_LOGGING=true                 # Enable JSON logging
 
 ### Option 1: Docker Compose (Recommended)
 
-**Start all services** (backend, frontend, ChromaDB, Redis, Ollama):
+**Prerequisites**: Install Ollama locally first (see below)
+
+**Start all services** (backend, frontend, ChromaDB, Redis):
 
 ```bash
 # Start services in background
 docker-compose up -d
-
-# Pull Llama 3.2 model (first time only, ~5-10 minutes)
-docker-compose exec ollama ollama pull llama3.2:latest
 
 # Check service status
 docker-compose ps
@@ -188,6 +187,23 @@ docker-compose logs -f
 
 # View logs (specific service)
 docker-compose logs -f backend
+```
+
+**Install and Start Ollama Locally**:
+
+```bash
+# Windows: Download from https://ollama.ai/download
+# Or use winget:
+winget install Ollama.Ollama
+
+# Start Ollama (runs on port 11434)
+ollama serve
+
+# Pull Llama 3.2 model (first time only, ~2GB)
+ollama pull llama3.2:latest
+
+# Verify model is available
+ollama list
 ```
 
 **Stop services**:
@@ -202,11 +218,14 @@ docker-compose down -v             # Also remove volumes (data loss!)
 **Terminal 1 - Start dependencies**:
 
 ```bash
-# Start ChromaDB, Redis, Ollama via Docker
-docker-compose up -d chromadb redis ollama
+# Start ChromaDB and Redis via Docker
+docker-compose up -d chromadb redis
 
-# Pull Llama model
-docker-compose exec ollama ollama pull llama3.2:11b
+# Start Ollama locally (if not already running)
+ollama serve
+
+# Verify Ollama is running
+ollama list
 ```
 
 **Terminal 2 - Run backend**:
@@ -232,11 +251,13 @@ npm run dev
 
 ### Option 3: Full Local Development
 
-**Without Docker** (requires manual setup of ChromaDB, Redis, Ollama):
+**Without Docker** (requires manual setup of ChromaDB, Redis, and local Ollama):
 
 ```bash
-# Not recommended for beginners
-# See docs/local-setup-without-docker.md (if exists)
+# Install Ollama locally: https://ollama.ai/download
+# Install Redis: https://redis.io/download
+# Install ChromaDB: pip install chromadb
+# Configure all services to run on default ports
 ```
 
 ---

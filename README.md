@@ -48,14 +48,30 @@ cp .env.example .env
 # Edit .env with your credentials (see Configuration section)
 ```
 
-### 2. Start Services
+### 2. Install and Start Ollama
 
 ```bash
-# Start all services (backend, frontend, ChromaDB, Redis, Ollama)
-docker-compose up -d
+# Windows
+winget install Ollama.Ollama
 
-# Pull Llama 3.2 model (first time only, 5-10 minutes)
-docker-compose exec ollama ollama pull llama3.2:11b
+# macOS
+brew install ollama
+
+# Linux
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# Start Ollama service
+ollama serve
+
+# Pull Llama 3.2 model (~2GB)
+ollama pull llama3.2:latest
+```
+
+### 3. Start Docker Services
+
+```bash
+# Start backend, frontend, ChromaDB, Redis
+docker-compose up -d
 
 # Check service health
 docker-compose ps
@@ -105,11 +121,11 @@ React Dashboard (TypeScript)
 
 **Tech Stack:**
 
-- **Backend**: Python 3.11, FastAPI, LangGraph, Ollama, PyGithub
+- **Backend**: Python 3.11, FastAPI, LangGraph, Ollama (local), PyGithub
 - **Storage**: ChromaDB (vector DB), Redis (cache)
 - **Frontend**: React 18, TypeScript, Vite, TailwindCSS
-- **Infrastructure**: Docker Compose (5 services)
-- **AI**: Llama 3.2 (11B or 90B) running locally
+- **Infrastructure**: Docker Compose (4 services)
+- **AI**: Llama 3.2 running locally via Ollama
 
 ## ⚙️ Configuration
 
@@ -123,9 +139,9 @@ GITHUB_TOKEN=ghp_xxxxxxxxxxxxx          # Personal access token (repo write)
 GITHUB_WEBHOOK_SECRET=your_secret_here  # Webhook signature secret
 GITHUB_REPO=owner/repo                  # Repository full name
 
-# Llama Configuration
-LLAMA_MODEL=llama3.2:11b                # Model variant (3b, 11b, 90b)
-OLLAMA_HOST=http://ollama:11434         # Ollama server URL
+# Llama Configuration (Local Ollama)
+LLAMA_MODEL=llama3.2:latest             # Model variant (3b or latest)
+OLLAMA_HOST=http://localhost:11434      # Local Ollama server URL
 
 # ChromaDB Configuration
 CHROMADB_HOST=chromadb                  # ChromaDB hostname
@@ -249,9 +265,9 @@ npm run test:coverage
 - Confirm issue has `generate-tests` label
 
 **Issue: Slow AI generation**
-- Check GPU availability: `docker-compose exec ollama nvidia-smi`
-- Consider smaller model: `llama3.2:3b`
-- Monitor resource usage: `docker stats`
+- Check if Ollama is using GPU: `ollama ps`
+- Consider smaller model: `ollama pull llama3.2:3b`
+- Monitor resource usage: `docker stats` and Task Manager
 
 **Issue: Vector DB empty**
 - Seed initial test cases: See `specs/001-ai-test-generation/quickstart.md`

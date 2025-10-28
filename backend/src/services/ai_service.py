@@ -172,12 +172,29 @@ class AIService:
         webhook_event = state["webhook_event"]
 
         try:
+            # Generate embedding for the issue body
+            query_embedding = self.embedding_service.generate_embedding(
+                webhook_event.issue_body)
+
             # Query vector DB for similar documents
-            similar_docs = await self.vector_db.query_similar(
-                query_text=webhook_event.issue_body,
-                top_k=5,
-                similarity_threshold=0.7  # SC-006 threshold
+            results = await self.vector_db.query_similar(
+                query_embedding=query_embedding,
+                n_results=5
             )
+
+            # Transform ChromaDB results into expected format
+            similar_docs = []
+            if results and results.get('documents') and len(results['documents']) > 0:
+                documents = results['documents'][0]  # First query result
+                metadatas = results['metadatas'][0] if results.get(
+                    'metadatas') else []
+
+                for i, doc_content in enumerate(documents):
+                    metadata = metadatas[i] if i < len(metadatas) else {}
+                    similar_docs.append({
+                        'content': doc_content,
+                        'issue_number': metadata.get('issue_number', 'unknown')
+                    })
 
             return {
                 **state,
@@ -239,8 +256,7 @@ class AIService:
         try:
             async with asyncio.timeout(self.timeout):
                 content = await self.llm_client.generate(
-                    prompt=prompt,
-                    model=self.model_name
+                    prompt=prompt
                 )
             generation_duration = (
                 datetime.now() - generation_start).total_seconds()
@@ -286,11 +302,13 @@ class AIService:
             }
 
         # Create TestCaseDocument
+        context_sources = [doc["issue_number"]
+                           for doc in context] if context else []
         metadata = {
             "issue": webhook_event.issue_number,
             "generated_at": datetime.now().isoformat(),
             "ai_model": self.model_name,
-            "context_sources": [doc["issue_number"] for doc in context]
+            "context_sources": context_sources
         }
 
         test_document = TestCaseDocument(
@@ -304,7 +322,7 @@ class AIService:
             pr_url=None,
             generated_at=datetime.now(),
             ai_model=self.model_name,
-            context_sources=[doc["issue_number"] for doc in context],
+            context_sources=context_sources,
             correlation_id=job.correlation_id
         )
 
@@ -327,18 +345,27 @@ class AIService:
         """
         job = state["job"]
         test_document = state["test_document"]
+        webhook_event = state["webhook_event"]
+
+        # Get repository and default branch SHA
+        repo = self.github_client.get_repo(webhook_event.repository)
+        default_branch = repo.default_branch
+        base_sha = repo.get_branch(default_branch).commit.sha
 
         # Create new branch
-        await self.github_client.create_branch(
-            branch_name=test_document.branch_name
+        self.github_client.create_branch(
+            repo_full_name=webhook_event.repository,
+            branch_name=test_document.branch_name,
+            base_sha=base_sha
         )
 
         # Commit test case file
         file_path = f"test-cases/issue-{test_document.issue_number}.md"
-        await self.github_client.create_or_update_file(
-            path=file_path,
+        self.github_client.create_or_update_file(
+            repo_full_name=webhook_event.repository,
+            file_path=file_path,
             content=test_document.content,
-            message=f"Add test cases for issue #{test_document.issue_number}",
+            commit_message=f"Add test cases for issue #{test_document.issue_number}",
             branch=test_document.branch_name
         )
 
@@ -377,11 +404,13 @@ class AIService:
             Updated state with PR details in test document
         """
         test_document = state["test_document"]
+        webhook_event = state["webhook_event"]
 
         # Create PR with issue reference
         pr_body = f"Automated test case generation for issue #{test_document.issue_number}.\n\nCloses #{test_document.issue_number}"
 
-        pr = await self.github_client.create_pull_request(
+        pr = self.github_client.create_pull_request(
+            repo_full_name=webhook_event.repository,
             title=test_document.title,
             body=pr_body,
             head=test_document.branch_name,
@@ -421,11 +450,13 @@ class AIService:
         """
         job = state["job"]
         test_document = state["test_document"]
+        webhook_event = state["webhook_event"]
 
         # Add comment to issue with PR link
         comment = f"✅ Test cases have been generated and are ready for review!\n\nPull Request: {test_document.pr_url}"
 
-        await self.github_client.add_issue_comment(
+        self.github_client.add_issue_comment(
+            repo_full_name=webhook_event.repository,
             issue_number=test_document.issue_number,
             comment=comment
         )
@@ -509,12 +540,29 @@ class AIService:
             VectorDBQueryError: If vector DB query fails
         """
         try:
+            # Generate embedding for the issue body
+            query_embedding = self.embedding_service.generate_embedding(
+                webhook_event.issue_body)
+
             # Query vector DB for similar documents
-            similar_docs = await self.vector_db.query_similar(
-                query_text=webhook_event.issue_body,
-                top_k=5,
-                similarity_threshold=0.7  # SC-006 threshold
+            results = await self.vector_db.query_similar(
+                query_embedding=query_embedding,
+                n_results=5
             )
+
+            # Transform ChromaDB results into expected format
+            similar_docs = []
+            if results and results.get('documents') and len(results['documents']) > 0:
+                documents = results['documents'][0]  # First query result
+                metadatas = results['metadatas'][0] if results.get(
+                    'metadatas') else []
+
+                for i, doc_content in enumerate(documents):
+                    metadata = metadatas[i] if i < len(metadatas) else {}
+                    similar_docs.append({
+                        'content': doc_content,
+                        'issue_number': metadata.get('issue_number', 'unknown')
+                    })
 
             return similar_docs
 
@@ -558,8 +606,7 @@ class AIService:
         try:
             async with asyncio.timeout(self.timeout):
                 content = await self.llm_client.generate(
-                    prompt=prompt,
-                    model=self.model_name
+                    prompt=prompt
                 )
         except asyncio.TimeoutError:
             raise AITimeoutError(timeout_seconds=self.timeout)
@@ -609,16 +656,16 @@ class AIService:
             Updated job with CREATE_PR stage
         """
         # Create new branch
-        await self.github_client.create_branch(
+        self.github_client.create_branch(
             branch_name=test_document.branch_name
         )
 
         # Commit test case file
         file_path = f"test-cases/issue-{test_document.issue_number}.md"
-        await self.github_client.create_or_update_file(
-            path=file_path,
+        self.github_client.create_or_update_file(
+            file_path=file_path,
             content=test_document.content,
-            message=f"Add test cases for issue #{test_document.issue_number}",
+            commit_message=f"Add test cases for issue #{test_document.issue_number}",
             branch=test_document.branch_name
         )
 
@@ -658,7 +705,7 @@ class AIService:
         # Create PR with issue reference
         pr_body = f"Automated test case generation for issue #{test_document.issue_number}.\n\nCloses #{test_document.issue_number}"
 
-        pr = await self.github_client.create_pull_request(
+        pr = self.github_client.create_pull_request(
             title=test_document.title,
             body=pr_body,
             head=test_document.branch_name,
@@ -699,7 +746,7 @@ class AIService:
         # Add comment to issue with PR link
         comment = f"✅ Test cases have been generated and are ready for review!\n\nPull Request: {test_document.pr_url}"
 
-        await self.github_client.add_issue_comment(
+        self.github_client.add_issue_comment(
             issue_number=test_document.issue_number,
             comment=comment
         )
