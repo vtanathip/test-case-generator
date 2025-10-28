@@ -131,31 +131,86 @@ React Dashboard (TypeScript)
 
 ### Required Environment Variables
 
-Edit `.env` file:
+Create a `.env` file in the project root with these values:
 
 ```bash
 # GitHub Configuration
-GITHUB_TOKEN=ghp_xxxxxxxxxxxxx          # Personal access token (repo write)
-GITHUB_WEBHOOK_SECRET=your_secret_here  # Webhook signature secret
-GITHUB_REPO=owner/repo                  # Repository full name
+GITHUB_TOKEN=ghp_xxxxxxxxxxxxx          # Personal access token (repo write permission required)
+GITHUB_WEBHOOK_SECRET=your_secret_here  # Webhook signature secret (match GitHub webhook config)
+GITHUB_REPO=owner/repo                  # Repository full name (e.g., vtanathip/test-case-generator)
 
-# Llama Configuration (Local Ollama)
-LLAMA_MODEL=llama3.2:latest             # Model variant (3b or latest)
-OLLAMA_HOST=http://localhost:11434      # Local Ollama server URL
+# AI Configuration (Local Ollama)
+LLAMA_MODEL=llama3.2:latest             # Model variant (llama3.2:3b for faster/smaller, llama3.2:latest for better quality)
+OLLAMA_HOST=http://host.docker.internal:11434  # IMPORTANT: Use host.docker.internal, NOT localhost
+OLLAMA_TIMEOUT=120                      # Generation timeout in seconds
 
-# ChromaDB Configuration
-CHROMADB_HOST=chromadb                  # ChromaDB hostname
-CHROMADB_COLLECTION=test_cases          # Collection name
+# Vector Database (ChromaDB)
+CHROMADB_HOST=chromadb                  # Docker service name (don't change)
+CHROMADB_PORT=8000                      # ChromaDB port
+CHROMADB_COLLECTION=test_cases          # Collection name for test case embeddings
+CHROMADB_EMBEDDING_MODEL=all-MiniLM-L6-v2  # SentenceTransformer model for embeddings
 
-# Redis Configuration
-REDIS_HOST=redis                        # Redis hostname
-REDIS_IDEMPOTENCY_TTL=3600              # Cache TTL (1 hour)
+# Cache (Redis)
+REDIS_HOST=redis                        # Docker service name (don't change)
+REDIS_PORT=6379                         # Redis port
+REDIS_DB=0                              # Redis database number
+REDIS_IDEMPOTENCY_TTL=3600              # Idempotency cache TTL (1 hour)
 
-# Cloudflare Tunnel
-CLOUDFLARE_TUNNEL_TOKEN=xxx             # Tunnel token
+# Backend Configuration
+BACKEND_HOST=0.0.0.0                    # Listen on all interfaces
+BACKEND_PORT=8000                       # Backend API port
+LOG_LEVEL=INFO                          # Logging level (DEBUG, INFO, WARNING, ERROR)
+
+# Frontend Configuration  
+FRONTEND_PORT=3000                      # Frontend dashboard port
+VITE_API_URL=http://localhost:8000      # Backend API URL for frontend
+
+# GitHub API
+GITHUB_API_TIMEOUT=30                   # GitHub API timeout in seconds
 ```
 
-See `.env.example` for complete configuration.
+### Critical Configuration Notes
+
+1. **OLLAMA_HOST Must Use `host.docker.internal`**
+   ```bash
+   # ✅ CORRECT - Allows Docker container to reach host Ollama
+   OLLAMA_HOST=http://host.docker.internal:11434
+   
+   # ❌ WRONG - Won't work from inside Docker container
+   OLLAMA_HOST=http://localhost:11434
+   ```
+
+2. **GitHub Token Permissions**
+   - Go to GitHub Settings → Developer settings → Personal access tokens
+   - Generate new token (classic) with:
+     - ✅ `repo` (Full control of private repositories)
+     - ✅ `workflow` (Update GitHub Action workflows) - optional
+   - Copy token and add to `.env` as `GITHUB_TOKEN`
+
+3. **Webhook Secret**
+   - Generate a random secret: `openssl rand -hex 32`
+   - Add same secret to:
+     - `.env` as `GITHUB_WEBHOOK_SECRET`
+     - GitHub webhook configuration
+
+4. **Model Selection**
+   ```bash
+   # For better quality (requires 8GB RAM):
+   LLAMA_MODEL=llama3.2:latest  # ~2GB model download
+   
+   # For faster generation (requires 2GB RAM):
+   LLAMA_MODEL=llama3.2:3b      # ~1.3GB model download
+   ```
+
+### Environment Template
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your actual credentials.
 
 ## 🛠️ Development
 
@@ -247,11 +302,40 @@ test-case-generator/
 
 ## 📝 Testing
 
+### Backend Tests
+
 ```bash
-# Backend tests (80% coverage target)
+# Backend tests (90/91 passing)
 cd backend
 pytest --cov=src --cov-report=html
 
+# Run specific test category
+pytest tests/unit/          # Unit tests
+pytest tests/integration/   # Integration tests
+pytest tests/contract/      # Contract tests
+```
+
+### End-to-End Testing
+
+For complete system validation with real GitHub issues:
+
+**See: [TEST_CASES.md](docs/TEST_CASES.md)**
+
+Includes 3 comprehensive test scenarios:
+1. **User Authentication Feature** - OAuth2 test case generation
+2. **REST API Endpoint** - API testing with error codes
+3. **Database Migration** - Schema change test cases
+
+Each test case includes:
+- Complete issue templates (copy-paste ready)
+- Expected log sequences
+- Validation steps
+- Success criteria
+- Performance benchmarks
+
+### Frontend Tests
+
+```bash
 # Frontend tests
 cd frontend
 npm run test:coverage
@@ -259,39 +343,91 @@ npm run test:coverage
 
 ## 🐛 Troubleshooting
 
-**Issue: Webhook not received**
-- Verify Cloudflare tunnel is running: `docker-compose logs cloudflare-tunnel`
-- Check webhook secret matches `.env` value
-- Confirm issue has `generate-tests` label
+### Quick Checks
 
-**Issue: Slow AI generation**
-- Check if Ollama is using GPU: `ollama ps`
-- Consider smaller model: `ollama pull llama3.2:3b`
-- Monitor resource usage: `docker stats` and Task Manager
+**Webhook not received?**
 
-**Issue: Vector DB empty**
-- Seed initial test cases: See `specs/001-ai-test-generation/quickstart.md`
-- Check ChromaDB logs: `docker-compose logs chromadb`
+- Verify issue has `generate-tests` label
+- Check backend logs: `docker-compose logs backend | Select-String "webhook_received"`
+- Confirm GitHub webhook is active in repository settings
+
+**AI generation slow or failing?**
+
+- Check Ollama is running: `curl http://localhost:11434/api/tags`
+- Verify model downloaded: `ollama list` (should show llama3.2:latest)
+- Use smaller model for faster generation: `LLAMA_MODEL=llama3.2:3b`
+
+**Services not starting?**
+
+- Check all containers: `docker-compose ps` (all should show "Up")
+- View specific service logs: `docker-compose logs [service-name]`
+- Restart services: `docker-compose restart`
+
+**Code changes not applied?**
+
+- You MUST rebuild Docker image (restart alone won't work):
+  ```bash
+  docker-compose build backend
+  docker-compose up -d backend
+  ```
+
+### Complete Troubleshooting Guide
+
+For detailed troubleshooting including:
+- ✅ System health checks
+- ✅ Error code reference (E101-E404)
+- ✅ Step-by-step diagnostics
+- ✅ Common issues and solutions
+- ✅ Performance optimization
+
+**See: [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)**
 
 ## 📚 Documentation
 
-| Category | Document | Description |
-|----------|----------|-------------|
-| **Getting Started** | [Developer Guide](docs/DEVELOPER_GUIDE.md) | Setup, testing, development workflow |
-| **Specification** | [spec.md](specs/001-ai-test-generation/spec.md) | Feature requirements and success criteria |
-| **Implementation** | [plan.md](specs/001-ai-test-generation/plan.md) | Technical implementation plan |
-| **Architecture** | [LangGraph Implementation](docs/langgraph-implementation.md) | AI workflow details |
-| **Data Models** | [data-model.md](specs/001-ai-test-generation/data-model.md) | Entity definitions and state machines |
-| **Error Handling** | [error-catalog.md](specs/001-ai-test-generation/error-catalog.md) | Error codes and recovery strategies |
-| **API Contract** | [contracts/openapi.yaml](specs/001-ai-test-generation/contracts/openapi.yaml) | OpenAPI specification |
-| **Setup Guide** | [quickstart.md](specs/001-ai-test-generation/quickstart.md) | Quick start guide |
+### Getting Started
 
-### Key Documentation
+| Document | Description | When to Read |
+|----------|-------------|--------------|
+| [README.md](README.md) | Project overview and quick start | **START HERE** - First time setup |
+| [QUICKSTART_GUIDE.md](docs/QUICKSTART_GUIDE.md) | Step-by-step installation | Setting up for the first time |
+| [DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) | Development workflow and testing | Contributing code or running tests |
 
-- 🚀 **New to the project?** Start with [Developer Guide](docs/DEVELOPER_GUIDE.md)
-- 📋 **Running tests?** See [Testing section](docs/DEVELOPER_GUIDE.md#running-tests) in Developer Guide
-- 🏗️ **Understanding architecture?** See [Architecture Overview](docs/DEVELOPER_GUIDE.md#architecture-overview)
-- 📝 **Writing docs?** Follow [Documentation Standards](docs/DOCUMENTATION_STANDARDS.md)
+### Operational Guides
+
+| Document | Description | When to Read |
+|----------|-------------|--------------|
+| [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and solutions | **Something not working** |
+| [TEST_CASES.md](docs/TEST_CASES.md) | 3 end-to-end test scenarios | Validating system functionality |
+| [uv-setup.md](docs/uv-setup.md) | Python environment with uv | Setting up local development |
+
+### Technical Documentation
+
+| Document | Description | When to Read |
+|----------|-------------|--------------|
+| [langgraph-implementation.md](docs/langgraph-implementation.md) | AI workflow architecture | Understanding LangGraph state machine |
+| [DOCUMENTATION_STANDARDS.md](docs/DOCUMENTATION_STANDARDS.md) | Documentation guidelines | Writing or updating docs |
+| [DOCUMENTATION_AUDIT_REPORT.md](docs/DOCUMENTATION_AUDIT_REPORT.md) | Documentation review results | Checking doc quality |
+
+### Feature Specifications
+
+| Document | Description | When to Read |
+|----------|-------------|--------------|
+| [spec.md](specs/001-ai-test-generation/spec.md) | Feature requirements and success criteria | Understanding requirements |
+| [plan.md](specs/001-ai-test-generation/plan.md) | Technical implementation plan | Implementation details |
+| [data-model.md](specs/001-ai-test-generation/data-model.md) | Entity definitions and state machines | Database schema and models |
+| [error-catalog.md](specs/001-ai-test-generation/error-catalog.md) | Error codes and recovery strategies | Debugging error codes |
+| [contracts/openapi.yaml](specs/001-ai-test-generation/contracts/openapi.yaml) | OpenAPI specification | API contract details |
+
+### Quick Reference
+
+| Scenario | Read This |
+|----------|-----------|
+| 🚀 **First time user** | README → QUICKSTART_GUIDE → TEST_CASES |
+| � **Something broken** | TROUBLESHOOTING → Check logs → Error catalog |
+| 👨‍💻 **Contributing code** | DEVELOPER_GUIDE → DOCUMENTATION_STANDARDS |
+| 🏗️ **Understanding architecture** | langgraph-implementation → spec.md → plan.md |
+| ✅ **Testing changes** | TEST_CASES → DEVELOPER_GUIDE (testing section) |
+| 📝 **Writing documentation** | DOCUMENTATION_STANDARDS → Existing docs as examples |
 
 ## 📄 License
 
